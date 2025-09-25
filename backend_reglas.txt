@@ -1,0 +1,597 @@
+# Documentación del proyecto Lumen API
+
+## Paquete com.librerialumen.api
+
+### LumenApiApplication
+Responsabilidad: Clase principal que arranca la aplicación Spring Boot y habilita la planificación de tareas.
+Métodos:
+- `main(String[] args)`: invoca a `SpringApplication.run` para iniciar el contexto de Spring y registrar las tareas programadas.
+
+## Paquete com.librerialumen.api.config
+
+### DevDataSeeder
+Responsabilidad: Siembra usuarios de ejemplo en el perfil `dev`.
+Dependencias: `PasswordEncoder`.
+Métodos:
+- `seedUsers(UserRepository userRepository)`: expone un `CommandLineRunner` que al iniciar la aplicación crea usuarios predefinidos si no existen.
+- `createUserIfMissing(UserRepository userRepository, String email, String role, String firstName, String lastName)`: verifica la existencia de un correo y, en caso de no existir, crea un `User` con contraseña codificada y lo guarda.
+
+### InitialUserSetupConfig
+Responsabilidad: Garantiza que exista un usuario administrador por defecto cuando la base está vacía.
+Dependencias: `PasswordEncoder`.
+Métodos:
+- `ensureDefaultUser(UserRepository userRepository)`: define un `CommandLineRunner` que solo se ejecuta cuando no hay usuarios; crea un admin con credenciales predeterminadas y registra un aviso en el log.
+
+### JwtProperties
+Responsabilidad: Encapsula la configuración de JWT proveniente de `application.properties`.
+Campos: `secret`, `expiration`, `refreshExpiration`.
+Métodos de acceso generados por Lombok.
+
+### OpenApiConfig
+Responsabilidad: Define metadatos de OpenAPI/Swagger y un esquema de seguridad `bearerAuth`.
+Métodos: no contiene métodos adicionales; la configuración se basa en anotaciones.
+
+### SecurityConfig
+Responsabilidad: Configura la seguridad HTTP, autenticación y beans asociados.
+Dependencias: `JwtAuthenticationFilter`, `UserDetailsService`.
+Métodos:
+- `securityFilterChain(HttpSecurity http)`: deshabilita CSRF, configura manejo de excepciones, sesiones sin estado y registra el filtro JWT. Permite acceso sin token a Swagger, endpoints de salud y a los nuevos recursos públicos `/public/products`, `/public/categories` y `/public/reservations`.
+- `passwordEncoder()`: expone un `BCryptPasswordEncoder`.
+- `authenticationManager(AuthenticationConfiguration configuration)`: obtiene el `AuthenticationManager`.
+- `daoAuthenticationProvider()`: crea un `DaoAuthenticationProvider`, enlaza el `UserDetailsService` y el codificador de contraseñas.
+
+## Paquete com.librerialumen.api.domain.enums
+
+### InventoryMovementType
+Valores: `IN`, `OUT`, `ADJUSTMENT`. Indican el tipo de movimiento de inventario.
+
+### ReservationStatus
+Valores: `PENDING`, `RESERVED`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `EXPIRED`. Representan el estado de una reserva.
+
+### SaleStatus
+Valores: `PENDING`, `COMPLETED`, `CANCELLED`. Estados posibles de una venta.
+
+## Paquete com.librerialumen.api.domain.model
+
+### BaseEntity
+Responsabilidad: Clase base para entidades JPA con campos comunes.
+Campos: `id`, `createdAt`, `updatedAt`.
+Métodos:
+- `onCreate()`: `@PrePersist`; inicializa `createdAt` y `updatedAt` con el instante actual.
+- `onUpdate()`: `@PreUpdate`; refresca `updatedAt` al instante actual.
+
+### AuditLog
+Responsabilidad: Registro de auditoría de acciones sobre entidades.
+Campos propios: `entityName`, `entityId`, `action`, `performedBy`, `performedAt`, `details`.
+Métodos:
+- `ensurePerformedAt()`: `@PrePersist`; asegura que `performedAt` tenga un valor antes de almacenarse.
+
+### Category
+Responsabilidad: Representa una categoría de productos.
+Campos: `name`, `description`, `active`.
+
+### Customer
+Responsabilidad: Datos de clientes identificados.
+Campos: `firstName`, `lastName`, `dni`, `email`, `phone`, `notes`. El DNI es único a nivel de base de datos y se utiliza para reutilizar información de clientes en reservas públicas.
+
+### InventoryMovement
+Responsabilidad: Movimiento de inventario asociado a un producto.
+Campos: `movementType`, `quantity`, `movementDate`, `reference`, `notes`, relación con `Product`.
+
+### Product
+Responsabilidad: Información de productos vendidos.
+Campos: `sku`, `isbn`, `title`, `author`, `description`, `price`, `active`, relación con `Category`.
+
+### Reservation
+Responsabilidad: Encapsula una reserva de productos para un cliente.
+Campos: `code`, `status`, `reservationDate`, `expirationDate`, `totalAmount`, `notes`, relación con `Customer` y lista de `ReservationItem`.
+
+### ReservationItem
+Responsabilidad: Ítem asociado a una reserva.
+Campos: referencia a `Reservation`, `Product`, `quantity`, `unitPrice`, `totalPrice`.
+
+### Sale
+Responsabilidad: Venta realizada en la librería.
+Campos: `status`, `saleDate`, `totalAmount`, `taxAmount`, `discountAmount`, `notes`, relaciones con `Customer`, `User` (cajero) y lista de `SaleItem`.
+
+### SaleItem
+Responsabilidad: Ítem vendido dentro de una venta específica.
+Campos: referencia a `Sale`, `Product`, `quantity`, `unitPrice`, `totalPrice`.
+
+### User
+Responsabilidad: Usuario del sistema con credenciales.
+Campos: `email`, `passwordHash`, `firstName`, `lastName`, `role`, `active`.
+
+## Paquete com.librerialumen.api.exception
+
+### BusinessException
+Responsabilidad: Excepción de negocio con código asociado.
+Campos: `code`.
+Métodos:
+- Constructores `BusinessException(String code, String message)` y `BusinessException(String code, String message, Throwable cause)`: configuran mensaje y causa.
+- `getCode()`: expone el código asociado a la excepción.
+
+## Paquete com.librerialumen.api.mapper (MapStruct)
+
+### AuthMapper
+Métodos:
+- `toMeResponse(User user)`: convierte un `User` en `MeResponse`.
+
+### CategoryMapper
+Métodos:
+- `toEntity(CategoryCreateDTO dto)`: mapea datos de creación a una entidad nueva.
+- `updateEntity(CategoryUpdateDTO dto, Category category)`: aplica cambios sobre una categoría existente.
+- `toView(Category category)`: convierte la entidad en DTO de respuesta.
+- `toViewList(List<Category> categories)`: convierte una lista de entidades a DTOs.
+
+### CustomerMapper
+Métodos:
+- `toEntity(CustomerCreateDTO dto)`: construye una entidad `Customer` desde el DTO de creación.
+- `updateEntity(CustomerUpdateDTO dto, Customer customer)`: aplica cambios ignorando nulos.
+- `toView(Customer customer)`: transforma a DTO de lectura.
+- `toViewList(List<Customer> customers)`: mapea listas.
+
+### ProductMapper
+Métodos:
+- `toEntity(ProductCreateDTO dto)`: genera un `Product` con campos básicos (sin categoría).
+- `updateEntity(ProductUpdateDTO dto, Product product)`: actualiza campos no nulos.
+- `toView(Product product)`: arma el DTO de salida incluyendo datos de la categoría.
+- `toViewList(List<Product> products)`: versión para listas.
+
+### ReservationItemMapper
+Métodos:
+- `toEntity(ReservationItemCreateDTO dto)`: crea una entidad `ReservationItem` básica (sin relaciones ni precios).
+- `toEntityList(List<ReservationItemCreateDTO> items)`: convierte una colección de DTOs.
+- `toView(ReservationItem item)`: produce el DTO de ítem de reserva con datos del producto.
+- `toViewList(List<ReservationItem> items)`: procesa listas.
+
+### ReservationMapper
+Métodos:
+- `toEntity(ReservationCreateDTO dto)`: arma una `Reservation` sin relaciones ni cálculos (estos se complementan en el servicio).
+- `toView(Reservation reservation)`: produce `ReservationViewDTO` con datos del cliente (incluyendo DNI, email y teléfono) y la fecha límite.
+- `toViewList(List<Reservation> reservations)`: convierte listas completas.
+
+### SaleItemMapper
+Métodos:
+- `toEntity(SaleItemCreateDTO dto)`: crea una entidad `SaleItem` base sin relaciones ni totales.
+- `toEntityList(List<SaleItemCreateDTO> dtoList)`: convierte una lista.
+- `toView(SaleItem item)`: arma el DTO con información del producto vendido.
+- `toViewList(List<SaleItem> items)`: procesa colecciones.
+
+### SaleMapper
+Métodos:
+- `toEntity(SaleCreateDTO dto)`: genera una entidad `Sale` sin relaciones ni montos calculados.
+- `toView(Sale sale)`: construye el DTO de respuesta con datos de cliente y cajero.
+- `toViewList(List<Sale> sales)`: versión para listas.
+
+### UserMapper
+Métodos:
+- `toEntity(UserCreateDTO dto)`: crea un `User` sin contraseña ni estado definidos.
+- `updateEntity(UserCreateDTO dto, User user)`: útil para copiar campos en caso de reaprovechar el DTO de creación.
+- `toView(User user)`: genera el DTO de lectura.
+- `toViewList(List<User> users)`: procesa listas.
+
+## Paquete com.librerialumen.api.repository
+
+### AuditLogRepository
+Extiende `JpaRepository<AuditLog, UUID>`; provee operaciones CRUD sobre registros de auditoría.
+
+### CategoryRepository
+Extiende `JpaRepository<Category, UUID>`.
+Métodos adicionales:
+- `findByActiveTrueOrderByNameAsc()`: recupera categorías habilitadas ordenadas alfabéticamente.
+- `findByIdAndActiveTrue(UUID categoryId)`: obtiene una categoría activa por identificador.
+
+### CustomerRepository
+Extiende `JpaRepository<Customer, UUID>`.
+Métodos adicionales:
+- `findByDni(String dni)`: localiza clientes por DNI para reutilizar registros en reservas públicas.
+
+### InventoryMovementRepository
+Responsabilidad: Persistencia de movimientos de inventario.
+Métodos adicionales:
+- `calculateCurrentStock(UUID productId)`: consulta personalizada que suma entradas y salidas para derivar el stock actual de un producto.
+
+### ProductRepository
+Responsabilidad: Persistencia de productos.
+Métodos adicionales:
+- `findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCaseOrSkuContainingIgnoreCase(String title, String author, String sku)`: búsqueda por coincidencia flexible.
+- `findByCategoryId(UUID categoryId)`: lista productos por categoría.
+- `findByActiveTrueOrderByTitleAsc()`: lista productos activos para el catálogo público.
+- `findByIdAndActiveTrue(UUID productId)`: obtiene un producto activo específico.
+
+### ReservationItemRepository
+Extiende `JpaRepository<ReservationItem, UUID>`.
+
+### ReservationRepository
+Responsabilidad: Gestor de reservas.
+Métodos adicionales:
+- `findByStatus(ReservationStatus status)`: filtra por estado.
+- `findByStatusAndCreatedAtBetween(ReservationStatus status, Instant start, Instant end)`: filtra por estado y rango de creación.
+- `findByCreatedAtBetween(Instant start, Instant end)`: filtra por fechas.
+- `findExpiredReservations(Instant now)`: consulta JPQL que recupera reservas `RESERVED` que ya expiraron.
+
+### SaleItemRepository
+Extiende `JpaRepository<SaleItem, UUID>`.
+
+### SaleRepository
+Responsabilidad: Persistencia de ventas.
+Métodos adicionales:
+- `findDailyTotals(Instant start, Instant end)`: consulta nativa que agrega totales diarios (utiliza la proyección `DailySalesTotals`).
+- `findWeeklyTotals(Instant start, Instant end)`: agrupa las ventas por semana devolviendo fechas de inicio y fin.
+
+- `findByCreatedAtBetween(Instant start, Instant end)`: recupera ventas en un rango.
+
+### UserRepository
+Responsabilidad: Manejo de usuarios.
+Métodos adicionales:
+- `findByEmail(String email)`: localiza por correo.
+- `existsByEmail(String email)`: verifica existencia del correo.
+
+## Paquete com.librerialumen.api.repository.projection
+
+### DailySalesTotals
+
+
+### WeeklySalesTotals
+
+Interfaz de proyecci?n con getters para weekStart, weekEnd, 	otalAmount, 	axAmount, discountAmount utilizados por reportes semanales de ventas.
+
+Interfaz de proyección con getters para `day`, `totalAmount`, `taxAmount`, `discountAmount` utilizados por reportes diarios de ventas.
+
+## Paquete com.librerialumen.api.scheduler
+
+### ReservationExpirationScheduler
+Responsabilidad: Marca reservas vencidas periódicamente.
+Dependencias: `ReservationRepository`, `AuditService`.
+Métodos:
+- `markExpiredReservations()`: se ejecuta cada 5 minutos; recupera reservas expiradas, cambia su estado a `EXPIRED`, registra auditoría y guarda los cambios.
+
+## Paquete com.librerialumen.api.security
+
+### ApplicationUserDetailsService
+Responsabilidad: Carga detalles de usuario para autenticación.
+Dependencias: `UserRepository`.
+Métodos:
+- `loadUserByUsername(String email)`: busca el usuario activo por email, verifica que no esté inactivo y retorna un `UserDetails` con rol formateado como `ROLE_<ROL>`.
+
+### JwtAuthenticationFilter
+Responsabilidad: Filtro que valida tokens JWT en cada solicitud.
+Dependencias: `JwtTokenService`, `UserDetailsService`.
+Métodos:
+- `shouldNotFilter(HttpServletRequest request)`: evita filtrar peticiones OPTIONS y rutas públicas configuradas, incluyendo los endpoints `/public/**`.
+- `doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)`: extrae el token del header, verifica su validez, autentica al usuario en el contexto de seguridad y continúa con la cadena de filtros.
+
+### JwtTokenService
+Responsabilidad: Gestiona generación y validación de tokens JWT.
+Dependencias: `JwtProperties`.
+Métodos públicos:
+- `generateAccessToken(UserDetails user)`: crea un token de acceso con duración configurada.
+- `generateRefreshToken(UserDetails user)`: crea un token de refresco con duración mayor.
+- `isTokenValid(String token, UserDetails userDetails)`: valida firma, expiración y usuario.
+- `extractUsername(String token)`: obtiene el `subject`.
+- `extractExpiration(String token)`: obtiene la expiración.
+Métodos privados destacados:
+- `isTokenExpired(String token)`: verifica si expiró.
+- `<T> extractClaim(String token, Function<Claims, T> claimsResolver)`: ayuda genérica.
+- `extractAllClaims(String token)`: parsea y valida el token.
+- `generateToken(Map<String,Object> extraClaims, UserDetails userDetails, Duration validity)`: construcción común para tokens.
+- `createClaims(UserDetails user)`: arma claims básicos (roles).
+- `buildSigningKey(String secret)`: garantiza una clave HMAC válida ajustando el secreto.
+Clases internas:
+- `TokenDetails`: DTO con el token generado y su fecha de expiración.
+
+## Paquete com.librerialumen.api.service (interfaces)
+
+### AuditService
+- `record(String entityName, String entityId, String action, String performedBy, Map<String, Object> details)`: registra un evento de auditoría.
+
+### CategoryService
+- `create(CategoryCreateDTO dto)`: crea categorías.
+- `update(UUID categoryId, CategoryUpdateDTO dto)`: reemplaza datos.
+- `patch(UUID categoryId, CategoryUpdateDTO dto)`: actualiza parcialmente.
+- `delete(UUID categoryId)`: elimina.
+- `get(UUID categoryId)`: obtiene por id.
+- `list()`: lista todas.
+
+### CustomerService
+- `create(CustomerCreateDTO dto)`, `update`, `patch`, `delete`, `get`, `list`: mismas responsabilidades que CategoryService pero para clientes.
+
+### InventoryService
+- `adjustStock(UUID productId, int delta, String reason, UUID actorUserId)`: registra movimientos manuales.
+- `getCurrentStock(UUID productId)`: calcula stock actual.
+
+### ProductService
+- `create(ProductCreateDTO dto)`, `update`, `patch`, `delete`, `get`, `list`: administración de productos.
+
+### PublicCatalogService
+- `listProducts()`: devuelve los productos activos con stock disponible.
+- `getProduct(UUID productId)`: obtiene un producto activo por identificador.
+- `listCategories()`: lista categorías activas.
+- `getCategory(UUID categoryId)`: obtiene una categoría activa específica.
+
+### ReportService
+- `getSalesTotals(Instant start, Instant end)`: devuelve la colección de `DailySalesTotals`.
+  - `getWeeklySalesTotals(Instant start, Instant end)`: agrega ventas agrup?ndolas por semana en el rango solicitado.
+
+
+### ReservationService
+- `create(ReservationCreateDTO dto, UUID actorUserId)`: crea reservas. Cuando el actor es `null`, se considera una creación pública y el sistema reutiliza/crea clientes basado en el DNI.
+- `accept(UUID reservationId, UUID actorUserId)`: permite a empleados pasar la reserva de `PENDING` a `RESERVED`.
+- `confirmPickup(UUID reservationId, UUID actorUserId, boolean createSale)`: confirma retiro solo para reservas aceptadas, descuenta stock o genera venta.
+- `cancel(UUID reservationId, UUID actorUserId, String reason)`: cancela considerando el estado previo.
+- `get(UUID reservationId)`: consulta.
+
+### SaleService
+- `create(SaleCreateDTO dto, UUID actorUserId)`: registra ventas.
+- `get(UUID saleId)`: obtiene venta.
+- `getDailySales(Instant start, Instant end)`: lista ventas en rango.
+
+### UserService
+- `create(UserCreateDTO dto)`: alta de usuarios.
+- `get(UUID userId)`: consulta.
+- `list()`: lista usuarios.
+- `updateStatus(UUID userId, UserStatusUpdateDTO dto)`: cambia estado activo.
+
+## Paquete com.librerialumen.api.service.impl
+
+### AuditServiceImpl
+Dependencias: `AuditLogRepository`, `ObjectMapper`.
+Métodos:
+- `record(...)`: crea un `AuditLog`, serializa detalles a JSON cuando es posible y guarda.
+- `serialize(Map<String, Object> details)`: convierte el mapa a JSON o a `toString()` si ocurre un error.
+
+### CategoryServiceImpl
+Dependencias: `CategoryRepository`, `CategoryMapper`, `AuditService`.
+Métodos:
+- `create(CategoryCreateDTO dto)`: genera entidad, aplica valor por defecto de `active`, guarda y audita.
+- `update(UUID categoryId, CategoryUpdateDTO dto)`: carga la categoría, aplica cambios completos, guarda y audita.
+- `patch(UUID categoryId, CategoryUpdateDTO dto)`: actualiza solo atributos presentes, guarda y audita.
+- `delete(UUID categoryId)`: elimina la categoría, captura violaciones de integridad y audita.
+- `get(UUID categoryId)`: retorna la categoría como DTO.
+- `list()`: devuelve todas las categorías.
+Métodos privados:
+- `loadCategory(UUID categoryId)`: busca o lanza `BusinessException`.
+- `saveAndAudit(Category category, String action)`: persiste y registra auditoría.
+- `buildAuditDetails(Category category)`: prepara datos clave para la auditoría.
+
+### CustomerServiceImpl
+Dependencias: `CustomerRepository`, `CustomerMapper`, `AuditService`.
+Métodos:
+- `create(CustomerCreateDTO dto)`: guarda y audita un cliente nuevo.
+- `update`, `patch`: cargan el cliente, aplican cambios vía mapper y guardan con auditoría.
+- `delete(UUID customerId)`: elimina manejando posibles restricciones y audita.
+- `get(UUID customerId)`, `list()`: operaciones de consulta.
+Métodos privados:
+- `loadCustomer(UUID customerId)`: obtiene o lanza excepción.
+- `applyUpdates(Customer customer, CustomerUpdateDTO dto)`: delega en el mapper.
+- `saveAndAudit(Customer customer, String action)`: guarda y audita.
+- `buildAuditDetails(Customer customer)`: compila campos relevantes para auditoría, incluyendo el DNI cuando está presente.
+
+### InventoryServiceImpl
+Dependencias: `ProductRepository`, `InventoryMovementRepository`, `AuditService`.
+Métodos:
+- `adjustStock(UUID productId, int delta, String reason, UUID actorUserId)`: valida delta, busca producto, crea un `InventoryMovement` de tipo `IN` o `OUT`, lo guarda, recalcula stock y registra auditoría incluyendo motivo y actor.
+- `getCurrentStock(UUID productId)`: valida existencia del producto y usa el repositorio para sumar movimientos.
+
+### ProductServiceImpl
+Dependencias: `ProductRepository`, `CategoryRepository`, `ProductMapper`, `AuditService`.
+Métodos:
+- `create(ProductCreateDTO dto)`: resuelve la categoría, crea el producto, aplica estado activo por defecto, guarda y audita.
+- `update(UUID productId, ProductUpdateDTO dto)`: delega en `applyUpdate`.
+- `patch(UUID productId, ProductUpdateDTO dto)`: también delega en `applyUpdate`.
+- `get(UUID productId)`, `list()`: consultas.
+- `delete(UUID productId)`: elimina manejando integridad referencial y audita.
+Métodos privados:
+- `applyUpdate(UUID productId, ProductUpdateDTO dto, String action)`: combina cambios del DTO, actualiza categoría e indicadores, guarda y audita incluyendo campos modificados.
+- `loadProduct(UUID productId)`: busca o lanza excepción.
+- `resolveCategory(UUID categoryId)`: busca la categoría o lanza excepción; valida obligatoriedad.
+- `auditProduct(Product product, String action)` y sobrecarga con `details`: centralizan el registro de auditoría.
+- `buildAuditDetails(Product product)`: prepara información relevante para auditoría.
+
+### PublicCatalogServiceImpl
+Dependencias: `ProductRepository`, `CategoryRepository`, `InventoryService`.
+Métodos:
+- `listProducts()`: obtiene productos activos y mapea información relevante (titulo, autor, precio, categoría y stock actual).
+- `getProduct(UUID productId)`: valida que el producto esté activo y retorna el DTO público.
+- `listCategories()`: lista categorías activas ordenadas por nombre.
+- `getCategory(UUID categoryId)`: valida existencia de categoría activa y retorna su DTO público.
+
+### ReportServiceImpl
+Dependencias: `SaleRepository`.
+Métodos:
+- `getSalesTotals(Instant start, Instant end)`: delega en el repositorio para obtener los totales diarios.
+  - `getWeeklySalesTotals(Instant start, Instant end)`: consulta el repositorio para agregar las ventas por semana.
+
+
+### ReservationServiceImpl
+Dependencias: `ReservationRepository`, `ProductRepository`, `CustomerRepository`, `ReservationMapper`, `ReservationItemMapper`, `InventoryService`, `SaleService`, `AuditService`.
+Métodos:
+- `create(ReservationCreateDTO dto, UUID actorUserId)`: valida que existan ítems, arma entidad con código generado y fecha actual. Si el actor es nulo (flujo público) crea o reutiliza clientes mediante el DNI; si hay actor, usa `customerId` o los datos anidados. Calcula montos, guarda y audita incluyendo origen (INTERNAL/PUBLIC) y datos del cliente.
+- `accept(UUID reservationId, UUID actorUserId)`: asegura que la reserva esté `PENDING`, la marca como `RESERVED` y registra auditoría con el estado previo.
+- `confirmPickup(UUID reservationId, UUID actorUserId, boolean createSale)`: requiere que la reserva se encuentre `RESERVED`, valida stock de cada ítem, genera venta opcional y registra auditoría con estados previos/nuevos.
+- `cancel(UUID reservationId, UUID actorUserId, String reason)`: registra el estado anterior antes de marcar `CANCELLED`, agrega motivo a la auditoría y evita cancelar reservas completadas o expiradas.
+- `get(UUID reservationId)`: obtiene y mapea la reserva.
+Métodos privados destacados:
+- `resolveCustomer(ReservationCreateDTO dto)`: reutiliza clientes por DNI (vía `CustomerRepository.findByDni`) o crea uno nuevo completando el campo `dni`.
+- `buildReservationItems(Reservation reservation, List<ReservationItemCreateDTO> itemDtos)`: arma ítems calculando precios totales.
+- `generateCode()`: genera un código único `RSV-XXXXXXXX`.
+- `buildSaleFromReservation(Reservation reservation)`: construye un `SaleCreateDTO` basado en la reserva para reutilizar lógica de ventas.
+- `recordAudit(String entity, UUID id, String action, UUID actor, Map<String, Object> details)`: centraliza el registro de auditoría agregando el identificador de la reserva.
+
+### SaleServiceImpl
+Dependencias: `SaleRepository`, `ProductRepository`, `CustomerRepository`, `UserRepository`, `SaleMapper`, `SaleItemMapper`, `InventoryService`, `AuditService`.
+Métodos:
+- `create(SaleCreateDTO dto, UUID actorUserId)`: valida que haya ítems, verifica cantidades y stock por producto, arma ítems con precios y totales, construye la venta con montos y notas, resuelve cajero (por `cashierId` o actor), asocia cliente si existe, guarda, descuenta inventario y audita.
+- `get(UUID saleId)`: obtiene la venta y la mapea.
+- `getDailySales(Instant start, Instant end)`: recupera ventas en el rango y las convierte a DTO.
+Métodos privados:
+- `recordAudit(Sale sale, UUID actorUserId)`: registra en auditoría el total y la cantidad de ítems vendidos.
+
+### UserServiceImpl
+Dependencias: `UserRepository`, `PasswordEncoder`, `UserMapper`, `AuditService`.
+Métodos:
+- `create(UserCreateDTO dto)`: normaliza el correo, valida duplicados, genera la entidad, codifica contraseña, estandariza el rol a mayúsculas, aplica estado activo por defecto, guarda y audita email/rol.
+- `get(UUID userId)`: busca y mapea o lanza excepción.
+- `list()`: retorna todos los usuarios mapeados.
+- `updateStatus(UUID userId, UserStatusUpdateDTO dto)`: cambia el estado `active`, guarda y registra auditoría con el nuevo estado.
+
+## Paquete com.librerialumen.api.web.controller
+
+### AuthController
+Dependencias: `AuthenticationManager`, `JwtTokenService`, `UserRepository`, `AuthMapper`.
+Métodos:
+- `login(AuthLoginRequest request)`: autentica las credenciales, guarda la autenticación en el contexto, genera tokens de acceso y refresco y retorna la respuesta.
+- `currentUser(Principal principal)`: verifica autenticación, busca el usuario por email, lo convierte con `AuthMapper` y retorna su perfil; lanza `BusinessException` si no hay sesión o usuario.
+
+### CategoriesController
+Dependencias: `CategoryService`.
+Métodos:
+- `create(CategoryCreateDTO dto)`: expone POST para crear categorías.
+- `update(UUID id, CategoryUpdateDTO dto)`: reemplaza los datos vía PUT.
+- `patch(UUID id, CategoryUpdateDTO dto)`: actualiza parcialmente vía PATCH.
+- `delete(UUID id)`: elimina la categoría y devuelve 204.
+- `list()`: retorna todas las categorías.
+- `get(UUID id)`: obtiene una categoría específica.
+
+### CustomersController
+Dependencias: `CustomerService`.
+Métodos:
+- `create(CustomerCreateDTO dto)`: alta de cliente.
+- `update(UUID id, CustomerUpdateDTO dto)`: PUT con datos completos.
+- `patch(UUID id, CustomerUpdateDTO dto)`: PATCH parcial (solo ADMIN).
+- `delete(UUID id)`: elimina cliente (solo ADMIN).
+- `list()`: lista clientes.
+- `get(UUID id)`: obtiene cliente.
+
+### InventoryController
+Dependencias: `InventoryService`, `UserRepository`.
+Métodos:
+- `adjustStock(InventoryAdjustmentRequest request, Principal principal)`: resuelve el usuario autenticado, ajusta stock mediante el servicio y retorna el nuevo nivel con marca temporal.
+- `getStock(UUID productId)`: consulta el stock actual y lo empaqueta en el DTO de respuesta.
+Métodos privados:
+- `resolveActorId(Principal principal)`: busca el usuario por correo para identificar al actor; lanza `BusinessException` si no hay autenticación o registro.
+
+### ProductsController
+Dependencias: `ProductService`.
+Métodos:
+- `create(ProductCreateDTO dto)`, `update(UUID id, ProductUpdateDTO dto)`, `patch(UUID id, ProductUpdateDTO dto)`, `delete(UUID id)`: operaciones de mutación restringidas a ADMIN.
+- `list()`, `get(UUID id)`: consultas para ADMIN y EMPLOYEE.
+
+### PublicCatalogController
+Dependencias: `PublicCatalogService`.
+Métodos:
+- `listProducts()`: expone `GET /public/products`, listado público de productos activos con precio, categoría y stock.
+- `getProduct(UUID id)`: expone `GET /public/products/{id}`, consulta pública de un producto activo.
+- `listCategories()`: expone `GET /public/categories`, listado de categorías activas.
+- `getCategory(UUID id)`: expone `GET /public/categories/{id}`, detalle público de categoría activa.
+
+### PublicReservationsController
+Dependencias: `ReservationService`.
+Métodos:
+- `create(PublicReservationCreateRequest request)`: expone `POST /public/reservations` para que clientes no autenticados creen reservas con DNI, datos de contacto y productos solicitados.
+
+### ReportsController
+Dependencias: `ReportService`.
+Métodos:
+- `getDailySalesTotals(Instant start, Instant end)`: recibe el rango de fechas como parámetros de query, consulta los totales diarios y los transforma en DTOs de salida.
+- `getWeeklySalesTotals(Instant start, Instant end)`: devuelve las ventas agregadas por semana dentro del rango indicado.
+
+
+### ReservationsController
+Dependencias: `ReservationService`, `UserRepository`.
+Métodos:
+- `create(ReservationCreateDTO dto, Principal principal)`: crea reservas internas en nombre del usuario autenticado.
+- `accept(UUID id, Principal principal)`: acepta reservas públicas, cambiando estado a `RESERVED`.
+- `confirm(UUID id, ReservationPickupRequest request, Principal principal)`: confirma la entrega de una reserva aceptada y opcionalmente genera una venta.
+- `cancel(UUID id, ReservationCancelRequest request, Principal principal)`: cancela una reserva y anota el motivo.
+- `get(UUID id)`: consulta una reserva específica.
+Métodos privados:
+- `resolveActorId(Principal principal)`: valida autenticación y obtiene el ID del usuario.
+
+### SalesController
+Dependencias: `SaleService`, `UserRepository`.
+Métodos:
+- `create(SaleCreateDTO dto, Principal principal)`: registra una venta asociada al usuario autenticado.
+- `get(UUID id)`: consulta una venta.
+- `listByDate(Instant start, Instant end)`: lista ventas dentro del rango indicado.
+Métodos privados:
+- `resolveActorId(Principal principal)`: comparte lógica con otros controladores para obtener el ID del usuario autenticado.
+
+### UsersController
+Dependencias: `UserService`.
+Métodos:
+- `create(UserCreateDTO dto)`: alta de usuario (ADMIN).
+- `list()`: lista usuarios.
+- `get(UUID id)`: consulta por identificador.
+- `updateStatus(UUID id, UserStatusUpdateDTO dto)`: cambia el estado activo/inactivo.
+
+## Paquete com.librerialumen.api.web.dto
+
+### Subpaquete auth
+- `AuthLoginRequest`: DTO de entrada con campos `email` y `password` con validaciones `@NotBlank` y `@Email`.
+- `AuthLoginResponse`: DTO de salida con `accessToken`, `refreshToken`, `tokenType`, `expiresAt`.
+- `MeResponse`: DTO para exponer los datos básicos del usuario autenticado (`id`, `email`, `firstName`, `lastName`, `role`, `createdAt`).
+
+### Subpaquete catalog
+- `PublicProductViewDTO`: respuesta pública con `id`, `title`, `author`, `price`, `categoryId`, `categoryName`, `stock`.
+- `PublicCategoryViewDTO`: respuesta pública con `id`, `name`, `description`.
+
+### Subpaquete category
+- `CategoryCreateDTO`: datos para crear una categoría (`name`, `description`, `active`).
+- `CategoryUpdateDTO`: datos opcionales para actualizar (`name`, `description`, `active`).
+- `CategoryViewDTO`: respuesta con identificador, descripción y marcas de tiempo.
+
+### Subpaquete customer
+- `CustomerCreateDTO`: entrada con validaciones para nombre, apellido y DNI (8 dígitos), además de correo y datos de contacto.
+- `CustomerUpdateDTO`: campos opcionales para modificar un cliente existente, incluye validación de DNI.
+- `CustomerViewDTO`: salida con todos los datos del cliente (incluyendo DNI) y fechas de creación/actualización.
+
+### Subpaquete inventory
+- `InventoryAdjustmentRequest`: entrada para un ajuste manual (`productId`, `delta`, `reason`).
+- `InventoryAdjustmentResponse`: respuesta que devuelve `productId`, `stock` resultante y `adjustedAt`.
+
+### Subpaquete product
+- `ProductCreateDTO`: datos para registrar un producto (SKU, ISBN, título, etc.).
+- `ProductUpdateDTO`: campos opcionales para modificar incluyendo `id` y `categoryId`.
+- `ProductViewDTO`: DTO de salida con información básica, relación a la categoría y fechas.
+
+### Subpaquete report
+- `DailySalesTotalsDTO`: DTO de respuesta de reportes con fecha y montos agregados.
+- `WeeklySalesTotalsDTO`: DTO de respuesta de reportes semanales con fechas de inicio/fin y montos agregados.
+
+
+### Subpaquete reservation
+- `PublicReservationCreateRequest`: solicitud pública que exige datos completos del cliente (DNI, nombre, email, teléfono), fecha límite y lista de ítems.
+- `ReservationCancelRequest`: solicitud con motivo obligatorio para cancelar.
+- `ReservationCreateDTO`: entrada reutilizada por flujos internos y públicos; admite `customerId` o `customerData`, lista de ítems, fecha límite y notas.
+- `ReservationCustomerDataDTO`: datos del cliente en línea para crear o actualizar clientes (incluye validaciones de DNI, email y teléfono).
+- `ReservationItemCreateDTO`: ítems de reserva con `productId` y `quantity` (mínimo 1).
+- `ReservationItemViewDTO`: DTO de salida con datos del producto, cantidades y precios.
+- `ReservationPickupRequest`: bandera `createSale` para indicar si se debe generar venta al confirmar.
+- `ReservationViewDTO`: respuesta completa de una reserva con estado, montos, información del cliente (incluyendo DNI, email y teléfono) e ítems.
+
+### Subpaquete sale
+- `SaleCreateDTO`: datos de entrada para crear una venta (`items`, `paymentMethod`, `cashierId`, `customerId`).
+- `SaleItemCreateDTO`: detalle de productos a vender (producto, cantidad, precio unitario opcional).
+- `SaleItemViewDTO`: salida con datos del producto y montos.
+- `SaleViewDTO`: respuesta con estado, montos, datos de cliente/cajero y lista de ítems.
+
+### Subpaquete user
+- `UserCreateDTO`: entrada para crear usuarios con validaciones en email, contraseña y rol.
+- `UserStatusUpdateDTO`: cuerpo mínimo para activar/desactivar usuarios.
+- `UserViewDTO`: representación de salida con datos personales, rol, estado y marcas de tiempo.
+
+## Migraciones de base de datos (Flyway)
+
+### V1__init_schema.sql
+Responsabilidad: Crea el esquema inicial (tablas `customers`, `categories`, `products`, `inventory_movements`, `reservations`, `sales`, `audit_logs`, etc.). Se actualizó para incluir el nuevo campo `dni` en `customers` y la restricción única correspondiente.
+
+
+## Consideraciones generales
+- Los endpoints públicos (`/public/**`) no requieren autenticación y consumen las versiones simplificadas de los DTOs.
+- Las reservas creadas sin autenticación quedan en estado `PENDING`; se requiere aprobación manual (`accept`) antes de permitir el retiro (`confirmPickup`).
+- El scheduler de expiración continúa vigente y opera sobre reservas en estado `RESERVED` cuya fecha límite expiró.
+- La auditoría de reservas captura ahora el estado previo/nuevo, el origen de la creación (INTERNAL/PUBLIC) y los datos clave del cliente (ID y DNI).
+- El proyecto asume un esquema inicial nuevo; si existe una instalaci?n previa sin el campo dni, crear una migraci?n incremental antes de desplegar (no mezclar V1 con el campo y una migraci?n que lo agregue nuevamente).
+- Se provee src/main/resources/example-application.properties como plantilla base para configurar credenciales y secretos localmente.
