@@ -15,6 +15,10 @@ export const adminRoutes: Routes = [
         loadComponent: () => import('./views/reservations-list.component').then(m => m.AdminReservationsListComponent)
       },
       {
+        path: 'reservations/new',
+        loadComponent: () => import('./views/reservation-create.component').then(m => m.AdminReservationCreateComponent)
+      },
+      {
         path: 'reservations/:id',
         loadComponent: () => import('./views/reservation-detail.component').then(m => m.AdminReservationDetailComponent)
       },
