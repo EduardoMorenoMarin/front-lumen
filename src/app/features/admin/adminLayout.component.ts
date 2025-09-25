@@ -13,7 +13,7 @@ import { MeResponse } from '../../core/models/auth';
     <header class="admin-topbar">
       <div class="admin-topbar__brand">Panel de administracion</div>
       <div class="admin-topbar__user" *ngIf="currentUser$ | async as user">
-        <span class="admin-topbar__name">{{ user.displayName || user.username }}</span>
+        <span class="admin-topbar__name">{{ user.displayName || user.email }}</span>
         <button type="button" (click)="logout()">Cerrar sesion</button>
       </div>
     </header>
