@@ -11,6 +11,21 @@ export const adminRoutes: Routes = [
         loadComponent: () => import('./views/dashboard.component').then(m => m.DashboardComponent)
       },
       {
+        path: 'productos',
+        redirectTo: 'products',
+        pathMatch: 'full'
+      },
+      {
+        path: 'productos/new',
+        redirectTo: 'products/new',
+        pathMatch: 'full'
+      },
+      {
+        path: 'productos/:id',
+        redirectTo: 'products/:id',
+        pathMatch: 'full'
+      },
+      {
         path: 'reservations',
         loadComponent: () => import('./views/reservations-list.component').then(m => m.AdminReservationsListComponent)
       },
