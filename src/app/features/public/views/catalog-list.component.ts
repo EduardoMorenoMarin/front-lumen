@@ -88,7 +88,7 @@ export class CatalogListComponent {
     };
 
     if (this.search.trim()) {
-      params.search = this.search.trim();
+      params['search'] = this.search.trim();
     }
 
     this.api.list(params).subscribe({

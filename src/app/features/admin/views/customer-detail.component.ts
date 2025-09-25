@@ -4,13 +4,15 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
   selector: 'app-admin-customer-detail',
   standalone: true,
-  template: 
+  template: `
     <h1>Customer Detail</h1>
     <p>ID: {{ customerId }}</p>
-  
+  `
 })
 export class AdminCustomerDetailComponent {
-  readonly customerId = this.route.snapshot.paramMap.get('id');
+  readonly customerId: string | null;
 
-  constructor(private readonly route: ActivatedRoute) {}
+  constructor(private readonly route: ActivatedRoute) {
+    this.customerId = this.route.snapshot.paramMap.get('id');
+  }
 }

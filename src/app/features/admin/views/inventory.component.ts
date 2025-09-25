@@ -3,8 +3,8 @@ import { Component } from '@angular/core';
 @Component({
   selector: 'app-admin-inventory',
   standalone: true,
-  template: 
+  template: `
     <h1>Inventory Management</h1>
-  
+  `
 })
 export class AdminInventoryComponent {}

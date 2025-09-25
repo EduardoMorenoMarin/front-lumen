@@ -10,7 +10,9 @@ import { ActivatedRoute } from '@angular/router';
   `
 })
 export class AdminReservationDetailComponent {
-  readonly reservationId = this.route.snapshot.paramMap.get('id');
+  readonly reservationId: string | null;
 
-  constructor(private readonly route: ActivatedRoute) {}
+  constructor(private readonly route: ActivatedRoute) {
+    this.reservationId = this.route.snapshot.paramMap.get('id');
+  }
 }
