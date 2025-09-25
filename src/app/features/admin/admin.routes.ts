@@ -48,6 +48,14 @@ export const adminRoutes: Routes = [
         loadComponent: () => import('./views/categories-list.component').then(m => m.AdminCategoriesListComponent)
       },
       {
+        path: 'categories/new',
+        loadComponent: () => import('./views/category-form.component').then(m => m.AdminCategoryFormComponent)
+      },
+      {
+        path: 'categories/:id/edit',
+        loadComponent: () => import('./views/category-form.component').then(m => m.AdminCategoryFormComponent)
+      },
+      {
         path: 'categories/:id',
         loadComponent: () => import('./views/category-detail.component').then(m => m.AdminCategoryDetailComponent)
       },
