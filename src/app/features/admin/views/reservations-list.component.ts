@@ -57,11 +57,11 @@ import { PageResponse } from '../../../core/models/pagination';
       <tbody>
         <tr *ngFor="let reservation of reservations">
           <td>{{ reservation.code }}</td>
-          <td>{{ reservation.productName || reservation.productId }}</td>
-          <td>{{ reservation.customerName || reservation.customerId }}</td>
-          <td>{{ reservation.quantity }}</td>
-          <td>{{ reservation.status }}</td>
-          <td>{{ reservation.reservedAt | date: 'short' }}</td>
+          <td>{{ getProductLabel(reservation) }}</td>
+          <td>{{ getCustomerLabel(reservation) }}</td>
+          <td>{{ getReservationQuantity(reservation) }}</td>
+          <td>{{ getStatusLabel(reservation.status) }}</td>
+          <td>{{ getReservationDate(reservation) | date: 'short' }}</td>
           <td>
             <a [routerLink]="['/admin/reservations', reservation.id]">Ver detalle</a>
             <button type="button" (click)="acceptReservation(reservation)" [disabled]="isActionInFlight(reservation.id)">
@@ -101,10 +101,12 @@ export class AdminReservationsListComponent {
   });
 
   readonly statusOptions: { value: string; label: string }[] = [
-    { value: 'pending', label: 'Pendiente' },
-    { value: 'confirmed', label: 'Confirmada' },
-    { value: 'cancelled', label: 'Cancelada' },
-    { value: 'picked_up', label: 'Retirada' }
+    { value: 'PENDING', label: 'Pendiente' },
+    { value: 'ACCEPTED', label: 'Aceptada' },
+    { value: 'CONFIRMED', label: 'Confirmada' },
+    { value: 'READY_FOR_PICKUP', label: 'Lista para retiro' },
+    { value: 'PICKED_UP', label: 'Retirada' },
+    { value: 'CANCELLED', label: 'Cancelada' }
   ];
 
   reservations: ReservationViewDTO[] = [];
@@ -164,12 +166,28 @@ export class AdminReservationsListComponent {
       });
   }
 
+  private readonly statusLabelMap = new Map<string, string>([
+    ['pending', 'Pendiente'],
+    ['PENDING', 'Pendiente'],
+    ['accepted', 'Aceptada'],
+    ['ACCEPTED', 'Aceptada'],
+    ['confirmed', 'Confirmada'],
+    ['CONFIRMED', 'Confirmada'],
+    ['ready_for_pickup', 'Lista para retiro'],
+    ['READY_FOR_PICKUP', 'Lista para retiro'],
+    ['picked_up', 'Retirada'],
+    ['PICKED_UP', 'Retirada'],
+    ['cancelled', 'Cancelada'],
+    ['CANCELLED', 'Cancelada']
+  ]);
+
   private handlePageResponse(response: PageResponse<ReservationViewDTO>): void {
-    this.reservations = response.items;
-    this.totalItems = response.totalItems;
-    this.page = response.page;
-    this.pageSize = response.pageSize;
-    this.totalPages = response.totalPages;
+    this.reservations = response.items ?? [];
+    this.totalItems = response.totalItems ?? this.reservations.length;
+    this.page = response.page ?? 1;
+    this.pageSize = response.pageSize ?? (this.reservations.length || this.pageSize);
+    this.totalPages = response.totalPages ??
+      (this.pageSize ? Math.max(1, Math.ceil(this.totalItems / this.pageSize)) : 1);
   }
 
   private setActionFeedback(message: string | null, error: string | null): void {
@@ -246,5 +264,64 @@ export class AdminReservationsListComponent {
           this.setActionFeedback(null, 'No se pudo completar la acción sobre la reserva.');
         }
       });
+  }
+
+  getProductLabel(reservation: ReservationViewDTO): string {
+    const firstItem = reservation.items && reservation.items.length ? reservation.items[0] : null;
+    if (firstItem) {
+      return firstItem.productTitle || firstItem.productId || '—';
+    }
+    return reservation.productName || reservation.productId || '—';
+  }
+
+  getCustomerLabel(reservation: ReservationViewDTO): string {
+    const nameParts = [reservation.customerFirstName, reservation.customerLastName]
+      .map(part => part?.trim())
+      .filter(Boolean) as string[];
+    if (nameParts.length) {
+      return nameParts.join(' ');
+    }
+    if (reservation.customerName) {
+      return reservation.customerName;
+    }
+    return (
+      reservation.customerEmail ||
+      reservation.customerDni ||
+      reservation.customerPhone ||
+      reservation.customerId ||
+      '—'
+    );
+  }
+
+  getReservationQuantity(reservation: ReservationViewDTO): number {
+    if (reservation.items && reservation.items.length) {
+      return reservation.items.reduce((total, item) => total + (item.quantity ?? 0), 0);
+    }
+    return reservation.quantity ?? 0;
+  }
+
+  getStatusLabel(status: string | null | undefined): string {
+    if (!status) {
+      return '—';
+    }
+    const direct = this.statusLabelMap.get(status);
+    if (direct) {
+      return direct;
+    }
+    const normalized = status.toLowerCase();
+    const normalizedMatch = this.statusLabelMap.get(normalized);
+    if (normalizedMatch) {
+      return normalizedMatch;
+    }
+    const formatted = normalized
+      .split(/[_-]/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+    return formatted || status;
+  }
+
+  getReservationDate(reservation: ReservationViewDTO): string | undefined {
+    return reservation.reservationDate || reservation.reservedAt || reservation.createdAt;
   }
 }
