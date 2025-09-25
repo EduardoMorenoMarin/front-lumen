@@ -1,0 +1,83 @@
+<section class="reports">
+  <header class="reports__header">
+    <h1>Reportes de ventas</h1>
+    <p>Analiza el rendimiento diario o semanal del negocio.</p>
+  </header>
+
+  <form class="filters" [formGroup]="filters" (ngSubmit)="loadReports()">
+    <div class="filters__field">
+      <label for="period">Periodo</label>
+      <select id="period" formControlName="period">
+        @for (period of periods; track period.value) {
+          <option [value]="period.value">{{ period.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="filters__field">
+      <label for="start">Desde</label>
+      <input id="start" type="date" formControlName="start" />
+    </div>
+
+    <div class="filters__field">
+      <label for="end">Hasta</label>
+      <input id="end" type="date" formControlName="end" />
+    </div>
+
+    <div class="filters__actions">
+      <button type="submit" [disabled]="isFetching()">Generar</button>
+      <button type="button" (click)="exportCsv()" [disabled]="!results().length">Exportar CSV</button>
+    </div>
+  </form>
+
+  <section class="summary">
+    <article class="summary__card">
+      <span class="summary__label">Ventas totales</span>
+      <strong class="summary__value">{{ totals().amount | currencyFormat: totals().currency }}</strong>
+    </article>
+    <article class="summary__card">
+      <span class="summary__label">Órdenes</span>
+      <strong class="summary__value">{{ totals().orders }}</strong>
+    </article>
+  </section>
+
+  @if (results().length) {
+    <section class="chart">
+      <h2>Tendencia de ventas</h2>
+      <div class="chart__bars">
+        @for (item of results(); track item.date) {
+          <div class="chart__bar" [style.--value]="maxTotal() ? item.totalSales / maxTotal() : 0">
+            <span class="chart__label">{{ item.date | dateFormat }}</span>
+            <span class="chart__amount">{{ item.totalSales | currencyFormat: item.currency }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="table">
+      <h2>Detalle</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Ventas</th>
+            <th>Pedidos</th>
+            <th>Moneda</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of results(); track row.date) {
+            <tr>
+              <td>{{ row.date | dateFormat }}</td>
+              <td>{{ row.totalSales | currencyFormat: row.currency }}</td>
+              <td>{{ row.totalOrders }}</td>
+              <td>{{ row.currency }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  } @else {
+    <p class="empty-state">Genera un reporte para ver datos de ventas.</p>
+  }
+</section>
