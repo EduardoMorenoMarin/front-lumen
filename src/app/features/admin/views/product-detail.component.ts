@@ -32,6 +32,11 @@ import { CategoryViewDTO } from '../../../core/models/category';
       </label>
 
       <label>
+        Autor
+        <input type="text" formControlName="author" placeholder="Apellido, Nombre" />
+      </label>
+
+      <label>
         SKU
         <input type="text" formControlName="sku" required />
         <span class="error" *ngIf="form.controls.sku.invalid && form.controls.sku.touched">
@@ -92,6 +97,7 @@ export class AdminProductDetailComponent {
 
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
+    author: [''],
     description: [''],
     sku: ['', Validators.required],
     price: [0, [Validators.required, Validators.min(0)]],
@@ -147,6 +153,7 @@ export class AdminProductDetailComponent {
   private populateForm(product: ProductViewDTO): void {
     this.form.setValue({
       name: product.name,
+      author: product.author ?? '',
       description: product.description ?? '',
       sku: product.sku,
       price: product.price,
@@ -167,6 +174,7 @@ export class AdminProductDetailComponent {
     const rawValue = this.form.getRawValue();
     const payload: ProductCreateDTO = {
       name: rawValue.name.trim(),
+      author: rawValue.author?.trim() || undefined,
       description: rawValue.description?.trim() || undefined,
       sku: rawValue.sku.trim(),
       price: Number(rawValue.price),
@@ -205,6 +213,7 @@ export class AdminProductDetailComponent {
     } else {
       this.form.reset({
         name: '',
+        author: '',
         description: '',
         sku: '',
         price: 0,
