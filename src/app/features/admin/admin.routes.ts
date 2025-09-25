@@ -21,6 +21,7 @@ export const adminRoutes: Routes = [
       {
         path: 'productos/:id',
         loadComponent: () => import('./views/product-detail.component').then(m => m.AdminProductDetailComponent)
+
       },
       {
         path: 'reservations',
