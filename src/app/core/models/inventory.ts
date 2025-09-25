@@ -1,6 +1,6 @@
 /**
  * Inventory adjustment record.
- * Endpoint: GET/POST /api/v1/inventory/adjustments
+ * Endpoint: POST /api/v1/inventory/adjust
  */
 export interface InventoryAdjustmentResponse {
   id: string;
@@ -13,7 +13,7 @@ export interface InventoryAdjustmentResponse {
 
 /**
  * Create inventory adjustment request.
- * Endpoint: POST /api/v1/inventory/adjustments
+ * Endpoint: POST /api/v1/inventory/adjust
  */
 export interface InventoryAdjustmentRequest {
   productId: string;
