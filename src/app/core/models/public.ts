@@ -5,6 +5,7 @@
 export interface PublicProductView {
   id: string;
   name: string;
+  author?: string;
   description?: string;
   price: number;
   currency: string;

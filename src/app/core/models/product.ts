@@ -5,6 +5,7 @@
 export interface ProductDTO {
   id: string;
   name: string;
+  author?: string;
   description?: string;
   sku: string;
   price: number;
@@ -21,6 +22,7 @@ export interface ProductDTO {
  */
 export interface ProductCreateDTO {
   name: string;
+  author?: string;
   description?: string;
   sku: string;
   price: number;
@@ -35,6 +37,7 @@ export interface ProductCreateDTO {
  */
 export interface ProductUpdateDTO {
   name?: string;
+  author?: string;
   description?: string;
   sku?: string;
   price?: number;
