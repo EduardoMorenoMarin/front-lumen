@@ -1,1 +1,1 @@
-// Utility exports placeholder
+export * from './slugify';
