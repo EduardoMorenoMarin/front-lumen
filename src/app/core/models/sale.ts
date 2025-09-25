@@ -39,7 +39,7 @@ export interface SaleViewDTO extends SaleDTO {}
 
 /**
  * Daily sales totals for reporting.
- * Endpoint: GET /api/v1/reports/daily-sales?date=YYYY-MM-DD
+ * Endpoint: GET /api/v1/reports/sales/daily?start=&end=
  */
 export interface DailySalesTotalsDTO {
   date: string; // YYYY-MM-DD
