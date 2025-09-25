@@ -4,12 +4,13 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { appRoutes } from './app.routes';
 import { jwtInterceptor } from './core/auth/jwt.interceptor';
+import { errorInterceptor, loadingInterceptor } from './shared';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes),
-    provideHttpClient(withInterceptors([jwtInterceptor]))
+    provideHttpClient(withInterceptors([loadingInterceptor, jwtInterceptor, errorInterceptor]))
   ]
 };
