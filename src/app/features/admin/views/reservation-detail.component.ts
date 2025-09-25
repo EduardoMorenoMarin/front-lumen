@@ -25,23 +25,39 @@ import { ReservationViewDTO } from '../../../core/models/reservation';
       <dl class="detail">
         <div>
           <dt>Producto</dt>
-          <dd>{{ reservation.productName || reservation.productId }}</dd>
+          <dd>{{ getProductLabel(reservation) }}</dd>
         </div>
         <div>
           <dt>Cliente</dt>
-          <dd>{{ reservation.customerName || reservation.customerId }}</dd>
+          <dd>{{ getCustomerLabel(reservation) }}</dd>
         </div>
         <div>
           <dt>Cantidad</dt>
-          <dd>{{ reservation.quantity }}</dd>
+          <dd>{{ getReservationQuantity(reservation) }}</dd>
         </div>
         <div>
           <dt>Estado</dt>
-          <dd>{{ reservation.status }}</dd>
+          <dd>{{ getStatusLabel(reservation.status) }}</dd>
         </div>
         <div>
           <dt>Reservada</dt>
-          <dd>{{ reservation.reservedAt | date: 'medium' }}</dd>
+          <dd>{{ getReservationDate(reservation) | date: 'medium' }}</dd>
+        </div>
+        <div *ngIf="reservation.pickupDeadline">
+          <dt>Fecha límite de retiro</dt>
+          <dd>{{ reservation.pickupDeadline | date: 'medium' }}</dd>
+        </div>
+        <div *ngIf="reservation.totalAmount !== undefined">
+          <dt>Monto total</dt>
+          <dd>{{ reservation.totalAmount | number: '1.2-2' }}</dd>
+        </div>
+        <div *ngIf="reservation.customerEmail || reservation.customerPhone">
+          <dt>Contacto</dt>
+          <dd>
+            <ng-container *ngIf="reservation.customerEmail">{{ reservation.customerEmail }}</ng-container>
+            <ng-container *ngIf="reservation.customerEmail && reservation.customerPhone"> · </ng-container>
+            <ng-container *ngIf="reservation.customerPhone">{{ reservation.customerPhone }}</ng-container>
+          </dd>
         </div>
         <div *ngIf="reservation.desiredPickupDate">
           <dt>Retiro deseado</dt>
@@ -52,6 +68,28 @@ import { ReservationViewDTO } from '../../../core/models/reservation';
           <dd>{{ reservation.notes }}</dd>
         </div>
       </dl>
+
+      <section *ngIf="reservation.items?.length" class="reservation-items">
+        <h2>Ítems reservados</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Precio unitario</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of reservation.items">
+              <td>{{ item.productTitle || item.productId }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.unitPrice | number: '1.2-2' }}</td>
+              <td>{{ item.totalPrice | number: '1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       <section class="actions">
         <h2>Acciones</h2>
@@ -81,6 +119,21 @@ export class AdminReservationDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+
+  private readonly statusLabelMap = new Map<string, string>([
+    ['pending', 'Pendiente'],
+    ['PENDING', 'Pendiente'],
+    ['accepted', 'Aceptada'],
+    ['ACCEPTED', 'Aceptada'],
+    ['confirmed', 'Confirmada'],
+    ['CONFIRMED', 'Confirmada'],
+    ['ready_for_pickup', 'Lista para retiro'],
+    ['READY_FOR_PICKUP', 'Lista para retiro'],
+    ['picked_up', 'Retirada'],
+    ['PICKED_UP', 'Retirada'],
+    ['cancelled', 'Cancelada'],
+    ['CANCELLED', 'Cancelada']
+  ]);
 
   readonly cancelForm = this.fb.nonNullable.group({
     reason: ['']
@@ -181,5 +234,64 @@ export class AdminReservationDetailComponent {
           this.error = 'No fue posible completar la acción.';
         }
       });
+  }
+
+  getProductLabel(reservation: ReservationViewDTO): string {
+    const firstItem = reservation.items && reservation.items.length ? reservation.items[0] : null;
+    if (firstItem) {
+      return firstItem.productTitle || firstItem.productId || '—';
+    }
+    return reservation.productName || reservation.productId || '—';
+  }
+
+  getCustomerLabel(reservation: ReservationViewDTO): string {
+    const nameParts = [reservation.customerFirstName, reservation.customerLastName]
+      .map(part => part?.trim())
+      .filter(Boolean) as string[];
+    if (nameParts.length) {
+      return nameParts.join(' ');
+    }
+    if (reservation.customerName) {
+      return reservation.customerName;
+    }
+    return (
+      reservation.customerEmail ||
+      reservation.customerDni ||
+      reservation.customerPhone ||
+      reservation.customerId ||
+      '—'
+    );
+  }
+
+  getReservationQuantity(reservation: ReservationViewDTO): number {
+    if (reservation.items && reservation.items.length) {
+      return reservation.items.reduce((total, item) => total + (item.quantity ?? 0), 0);
+    }
+    return reservation.quantity ?? 0;
+  }
+
+  getStatusLabel(status: string | null | undefined): string {
+    if (!status) {
+      return '—';
+    }
+    const direct = this.statusLabelMap.get(status);
+    if (direct) {
+      return direct;
+    }
+    const normalized = status.toLowerCase();
+    const normalizedMatch = this.statusLabelMap.get(normalized);
+    if (normalizedMatch) {
+      return normalizedMatch;
+    }
+    const formatted = normalized
+      .split(/[_-]/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+    return formatted || status;
+  }
+
+  getReservationDate(reservation: ReservationViewDTO): string | undefined {
+    return reservation.reservationDate || reservation.reservedAt || reservation.createdAt;
   }
 }
