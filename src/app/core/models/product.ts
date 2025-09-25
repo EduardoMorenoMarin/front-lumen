@@ -4,16 +4,18 @@
  */
 export interface ProductDTO {
   id: string;
-  name: string;
+  sku: string;
+  isbn?: string;
+  title: string;
   author?: string;
   description?: string;
-  sku: string;
   price: number;
-  currency: string;
+  active: boolean;
   categoryId: string;
-  isActive: boolean;
+  categoryName?: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  currency?: string; // permitido por compatibilidad hacia atrás
 }
 
 /**
@@ -21,37 +23,41 @@ export interface ProductDTO {
  * Endpoint: POST /api/v1/products
  */
 export interface ProductCreateDTO {
-  name: string;
-  author?: string;
-  description?: string;
   sku: string;
+  isbn?: string;
+  title: string;
+  author: string;
+  description: string;
   price: number;
-  currency: string;
+  active: boolean;
   categoryId: string;
-  isActive?: boolean;
 }
 
 /**
- * Update product request.
- * Endpoint: PUT /api/v1/products/:id
+ * Replace product request (PUT)
  */
-export interface ProductUpdateDTO {
-  name?: string;
+export interface ProductReplaceDTO extends ProductCreateDTO {
+  id: string;
+}
+
+/**
+ * Partial update payload (PATCH)
+ */
+export interface ProductPatchDTO {
+  id?: string;
+  sku?: string;
+  isbn?: string | null;
+  title?: string;
   author?: string;
   description?: string;
-  sku?: string;
   price?: number;
-  currency?: string;
+  active?: boolean;
   categoryId?: string;
-  isActive?: boolean;
 }
 
 /**
  * Product view for admin screens.
- * Endpoint: GET /api/v1/products, GET /api/v1/products/:id
  */
-export interface ProductViewDTO extends ProductDTO {
-  categoryName?: string;
-}
+export type ProductViewDTO = ProductDTO;
 
 

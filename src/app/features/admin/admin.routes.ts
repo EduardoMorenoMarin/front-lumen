@@ -12,18 +12,16 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'productos',
-        redirectTo: 'products',
-        pathMatch: 'full'
+        loadComponent: () => import('./views/products-list.component').then(m => m.AdminProductsListComponent)
       },
       {
         path: 'productos/new',
-        redirectTo: 'products/new',
-        pathMatch: 'full'
+        loadComponent: () => import('./views/product-detail.component').then(m => m.AdminProductDetailComponent)
       },
       {
         path: 'productos/:id',
-        redirectTo: 'products/:id',
-        pathMatch: 'full'
+        loadComponent: () => import('./views/product-detail.component').then(m => m.AdminProductDetailComponent)
+
       },
       {
         path: 'reservations',
