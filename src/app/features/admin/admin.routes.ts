@@ -11,6 +11,18 @@ export const adminRoutes: Routes = [
         loadComponent: () => import('./views/dashboard.component').then(m => m.DashboardComponent)
       },
       {
+        path: 'productos',
+        loadComponent: () => import('./views/products-list.component').then(m => m.AdminProductsListComponent)
+      },
+      {
+        path: 'productos/new',
+        loadComponent: () => import('./views/product-detail.component').then(m => m.AdminProductDetailComponent)
+      },
+      {
+        path: 'productos/:id',
+        loadComponent: () => import('./views/product-detail.component').then(m => m.AdminProductDetailComponent)
+      },
+      {
         path: 'reservations',
         loadComponent: () => import('./views/reservations-list.component').then(m => m.AdminReservationsListComponent)
       },

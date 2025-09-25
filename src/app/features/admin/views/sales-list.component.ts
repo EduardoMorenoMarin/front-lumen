@@ -43,7 +43,7 @@ type SaleItemFormGroup = ReturnType<typeof createSaleItemGroup>;
               Producto
               <select formControlName="productId" required>
                 <option value="" disabled>Selecciona un producto</option>
-                <option *ngFor="let product of products" [value]="product.id">{{ product.name }}</option>
+                <option *ngFor="let product of products" [value]="product.id">{{ product.title }}</option>
               </select>
             </label>
 
@@ -250,7 +250,7 @@ export class AdminSalesListComponent {
 
   private loadProducts(): void {
     this.productsApi
-      .list({ page: 1, pageSize: 100, sort: 'name,asc', isActive: true })
+      .list({ page: 1, pageSize: 100, sort: 'title,asc', active: true })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: response => (this.products = response.items),

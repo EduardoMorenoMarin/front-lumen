@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, DestroyRef, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -13,7 +13,7 @@ import { PageResponse } from '../../../core/models/pagination';
 @Component({
   selector: 'app-admin-products-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, CurrencyPipe],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, CurrencyPipe, DatePipe],
   template: `
     <section class="page-header">
       <h1>Productos</h1>
@@ -23,7 +23,7 @@ import { PageResponse } from '../../../core/models/pagination';
     <form class="filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()">
       <label>
         Búsqueda
-        <input type="text" formControlName="search" placeholder="Nombre o SKU" />
+        <input type="text" formControlName="search" placeholder="SKU, título o ISBN" />
       </label>
 
       <label>
@@ -36,10 +36,20 @@ import { PageResponse } from '../../../core/models/pagination';
 
       <label>
         Estado
-        <select formControlName="isActive">
+        <select formControlName="active">
           <option value="">Todos</option>
           <option value="true">Activos</option>
           <option value="false">Inactivos</option>
+        </select>
+      </label>
+
+      <label>
+        Ordenar por
+        <select formControlName="sort">
+          <option value="updatedAt,desc">Actualizados recientemente</option>
+          <option value="updatedAt,asc">Actualizados más antiguos</option>
+          <option value="price,asc">Precio (menor a mayor)</option>
+          <option value="price,desc">Precio (mayor a menor)</option>
         </select>
       </label>
 
@@ -50,27 +60,35 @@ import { PageResponse } from '../../../core/models/pagination';
     </form>
 
     <section *ngIf="error" class="alert error">{{ error }}</section>
-    <section *ngIf="message" class="alert success">{{ message }}</section>
     <section *ngIf="loading" class="loading">Cargando productos…</section>
 
     <table *ngIf="!loading && products.length" class="data-table">
       <thead>
         <tr>
-          <th>Nombre</th>
           <th>SKU</th>
+          <th>Título</th>
+          <th>Autor</th>
           <th>Precio</th>
           <th>Categoría</th>
           <th>Estado</th>
+          <th>Actualizado</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let product of products">
-          <td>{{ product.name }}</td>
           <td>{{ product.sku }}</td>
-          <td>{{ product.price | currency: product.currency }}</td>
+          <td>{{ product.title }}</td>
+          <td>{{ product.author }}</td>
+          <td>
+            <ng-container *ngIf="product.currency; else priceValue">
+              {{ product.price | currency: product.currency }}
+            </ng-container>
+            <ng-template #priceValue>{{ product.price | number: '1.2-2' }}</ng-template>
+          </td>
           <td>{{ product.categoryName || 'Sin categoría' }}</td>
-          <td>{{ product.isActive ? 'Activo' : 'Inactivo' }}</td>
+          <td>{{ product.active ? 'Activo' : 'Inactivo' }}</td>
+          <td>{{ product.updatedAt | date: 'short' }}</td>
           <td>
             <a [routerLink]="['/admin/products', product.id]">Editar</a>
           </td>
@@ -96,13 +114,13 @@ export class AdminProductsListComponent {
   readonly filterForm = this.fb.nonNullable.group({
     search: [''],
     categoryId: [''],
-    isActive: ['']
+    active: [''],
+    sort: ['updatedAt,desc']
   });
 
   products: ProductViewDTO[] = [];
   categories: CategoryViewDTO[] = [];
   loading = false;
-  message: string | null = null;
   error: string | null = null;
   page = 1;
   pageSize = 10;
@@ -119,7 +137,7 @@ export class AdminProductsListComponent {
   }
 
   resetFilters(): void {
-    this.filterForm.reset({ search: '', categoryId: '', isActive: '' });
+    this.filterForm.reset({ search: '', categoryId: '', active: '', sort: 'updatedAt,desc' });
     this.loadProducts(1);
   }
 
@@ -142,14 +160,15 @@ export class AdminProductsListComponent {
   private loadProducts(page: number): void {
     this.loading = true;
     this.error = null;
-    const { search, categoryId, isActive } = this.filterForm.getRawValue();
+    const { search, categoryId, active, sort } = this.filterForm.getRawValue();
     this.productsApi
       .list({
         page,
         pageSize: this.pageSize,
-        search: search || undefined,
+        search: search?.trim() || undefined,
         categoryId: categoryId || undefined,
-        isActive: isActive ? isActive === 'true' : undefined
+        active: active ? active === 'true' : undefined,
+        sort: sort || undefined
       })
       .pipe(
         takeUntilDestroyed(this.destroyRef),
