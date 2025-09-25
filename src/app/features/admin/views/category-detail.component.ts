@@ -10,7 +10,9 @@ import { ActivatedRoute } from '@angular/router';
   `
 })
 export class AdminCategoryDetailComponent {
-  readonly categoryId = this.route.snapshot.paramMap.get('id');
+  readonly categoryId: string | null;
 
-  constructor(private readonly route: ActivatedRoute) {}
+  constructor(private readonly route: ActivatedRoute) {
+    this.categoryId = this.route.snapshot.paramMap.get('id');
+  }
 }
