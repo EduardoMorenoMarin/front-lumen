@@ -1,26 +1,195 @@
-import { CommonModule, DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { ReservationsApi } from '../../../core/api/reservations.api';
-import { ReservationViewDTO } from '../../../core/models/reservation';
-import { PageResponse } from '../../../core/models/pagination';
+import { Reservation, ReservationStatus } from '../../../core/models/reservation';
+import { ToastService } from '../../../shared/services/toast.service';
 
 @Component({
   selector: 'app-admin-reservations-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  styles: [
+    `
+      :host {
+        display: block;
+        padding: 2rem;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .page-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+
+      .page-header a {
+        background: #2563eb;
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      form.filters {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        background: #f9fafb;
+      }
+
+      form.filters label {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.875rem;
+        gap: 0.35rem;
+      }
+
+      form.filters input,
+      form.filters select {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        border: 1px solid #d1d5db;
+      }
+
+      .filters .actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .filters button {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+      }
+
+      .filters button[type='submit'] {
+        background: #111827;
+        color: #fff;
+      }
+
+      .filters button[type='button'] {
+        background: #e5e7eb;
+        color: #111827;
+      }
+
+      .status-badge {
+        padding: 0.125rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-badge.PENDING {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .status-badge.ACCEPTED {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status-badge.CANCELED {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+
+      th,
+      td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      tbody tr:hover {
+        background: #f9fafb;
+      }
+
+      .table-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .table-actions a {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .empty-state,
+      .error,
+      .loading {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        margin-top: 1rem;
+      }
+
+      .error {
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #991b1b;
+      }
+
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+
+      .pagination button {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .pagination button[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    `
+  ],
   template: `
     <section class="page-header">
       <h1>Reservas</h1>
+      <a routerLink="/admin/reservations/new">Nueva reserva</a>
     </section>
 
     <form class="filters" [formGroup]="filterForm" (ngSubmit)="onFilter()">
       <label>
-        Búsqueda
-        <input type="text" formControlName="search" placeholder="Código, cliente o producto" />
+        Buscar
+        <input type="search" formControlName="search" placeholder="Código, DNI o email" />
       </label>
 
       <label>
@@ -31,62 +200,58 @@ import { PageResponse } from '../../../core/models/pagination';
         </select>
       </label>
 
-      <div class="filter-actions">
-        <button type="submit">Aplicar filtros</button>
+      <div class="actions">
+        <button type="submit">Aplicar</button>
         <button type="button" (click)="clearFilters()">Limpiar</button>
       </div>
     </form>
 
-    <section *ngIf="message" class="alert success">{{ message }}</section>
-    <section *ngIf="error" class="alert error">{{ error }}</section>
+    <section *ngIf="loading()" class="loading">Cargando reservas…</section>
+    <section *ngIf="error()" class="error">{{ error() }}</section>
 
-    <section *ngIf="loading" class="loading">Cargando reservas…</section>
-
-    <table *ngIf="!loading && reservations.length" class="data-table">
+    <table *ngIf="!loading() && paginatedReservations().length">
       <thead>
         <tr>
           <th>Código</th>
-          <th>Producto</th>
           <th>Cliente</th>
-          <th>Cantidad</th>
           <th>Estado</th>
-          <th>Reservada</th>
-          <th>Acciones</th>
+          <th>Fecha de reserva</th>
+          <th>Fecha límite</th>
+          <th>Total</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let reservation of reservations">
+        <tr *ngFor="let reservation of paginatedReservations()">
           <td>{{ reservation.code }}</td>
-          <td>{{ getProductLabel(reservation) }}</td>
           <td>{{ getCustomerLabel(reservation) }}</td>
-          <td>{{ getReservationQuantity(reservation) }}</td>
-          <td>{{ getStatusLabel(reservation.status) }}</td>
-          <td>{{ getReservationDate(reservation) | date: 'short' }}</td>
-          <td>
-            <a [routerLink]="['/admin/reservations', reservation.id]">Ver detalle</a>
-            <button type="button" (click)="acceptReservation(reservation)" [disabled]="isActionInFlight(reservation.id)">
-              Aceptar
-            </button>
-            <button type="button" (click)="confirmReservation(reservation, true)" [disabled]="isActionInFlight(reservation.id)">
-              Confirmar + venta
-            </button>
-            <button type="button" (click)="confirmReservation(reservation, false)" [disabled]="isActionInFlight(reservation.id)">
-              Confirmar sin venta
-            </button>
-            <button type="button" (click)="cancelReservation(reservation)" [disabled]="isActionInFlight(reservation.id)">
-              Cancelar
-            </button>
+          <td><span class="status-badge {{ reservation.status }}">{{ getStatusLabel(reservation.status) }}</span></td>
+          <td>{{ reservation.reservationDate | date: 'short' }}</td>
+          <td>{{ reservation.pickupDeadline | date: 'short' }}</td>
+          <td>{{ reservation.totalAmount | currency: 'USD' }}</td>
+          <td class="table-actions">
+            <a [routerLink]="['/admin/reservations', reservation.id]">Ver</a>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <p *ngIf="!loading && !reservations.length" class="empty-state">No se encontraron reservas con los filtros seleccionados.</p>
+    <p *ngIf="!loading() && !paginatedReservations().length" class="empty-state">
+      No se encontraron reservas con los filtros seleccionados.
+    </p>
 
-    <nav class="pagination" *ngIf="!loading && totalPages > 1">
-      <button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
-      <span>Página {{ page }} de {{ totalPages }}</span>
-      <button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages">Siguiente</button>
+    <nav class="pagination" *ngIf="totalPages() > 1">
+      <button type="button" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">
+        Anterior
+      </button>
+      <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
+      <button
+        type="button"
+        (click)="goToPage(currentPage() + 1)"
+        [disabled]="currentPage() === totalPages()"
+      >
+        Siguiente
+      </button>
     </nav>
   `
 })
@@ -94,234 +259,134 @@ export class AdminReservationsListComponent {
   private readonly reservationsApi = inject(ReservationsApi);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
+
+  private readonly reservationsSignal = signal<Reservation[]>([]);
+  private readonly activeSearch = signal('');
+  private readonly activeStatus = signal<ReservationStatus | ''>('');
+  readonly currentPage = signal(1);
+
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+
+  readonly pageSize = 10;
+
+  readonly statusOptions: { value: ReservationStatus; label: string }[] = [
+    { value: 'PENDING', label: 'Pendiente' },
+    { value: 'ACCEPTED', label: 'Aceptada' },
+    { value: 'CANCELED', label: 'Cancelada' }
+  ];
 
   readonly filterForm = this.fb.nonNullable.group({
     search: [''],
     status: ['']
   });
 
-  readonly statusOptions: { value: string; label: string }[] = [
-    { value: 'PENDING', label: 'Pendiente' },
-    { value: 'ACCEPTED', label: 'Aceptada' },
-    { value: 'CONFIRMED', label: 'Confirmada' },
-    { value: 'READY_FOR_PICKUP', label: 'Lista para retiro' },
-    { value: 'PICKED_UP', label: 'Retirada' },
-    { value: 'CANCELLED', label: 'Cancelada' }
-  ];
+  readonly filteredReservations = computed(() => {
+    const search = this.activeSearch().trim().toLowerCase();
+    const status = this.activeStatus();
+    return this.reservationsSignal().filter((reservation) => {
+      const matchesStatus = status ? reservation.status === status : true;
+      if (!matchesStatus) {
+        return false;
+      }
+      if (!search) {
+        return true;
+      }
+      const haystack = [
+        reservation.code,
+        reservation.customerDni,
+        reservation.customerEmail,
+        reservation.customerFirstName,
+        reservation.customerLastName
+      ]
+        .filter(Boolean)
+        .map((value) => value.toLowerCase())
+        .join(' ');
+      return haystack.includes(search);
+    });
+  });
 
-  reservations: ReservationViewDTO[] = [];
-  page = 1;
-  pageSize = 10;
-  totalPages = 1;
-  totalItems = 0;
-  loading = false;
-  message: string | null = null;
-  error: string | null = null;
-  private actionInFlight: string | null = null;
+  readonly totalPages = computed(() => {
+    const totalItems = this.filteredReservations().length;
+    if (totalItems === 0) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(totalItems / this.pageSize));
+  });
+
+  readonly paginatedReservations = computed(() => {
+    const startIndex = (this.currentPage() - 1) * this.pageSize;
+    return this.filteredReservations().slice(startIndex, startIndex + this.pageSize);
+  });
 
   constructor() {
-    this.loadReservations(1);
+    this.loadReservations();
   }
 
   onFilter(): void {
-    this.loadReservations(1);
+    const { search, status } = this.filterForm.getRawValue();
+    this.activeSearch.set(search ?? '');
+    this.activeStatus.set((status as ReservationStatus | '') ?? '');
+    this.currentPage.set(1);
   }
 
   clearFilters(): void {
     this.filterForm.reset({ search: '', status: '' });
-    this.loadReservations(1);
+    this.activeSearch.set('');
+    this.activeStatus.set('');
+    this.currentPage.set(1);
   }
 
   goToPage(page: number): void {
-    if (page < 1 || page > this.totalPages) return;
-    this.loadReservations(page);
+    const total = this.totalPages();
+    if (total === 0) {
+      this.currentPage.set(1);
+      return;
+    }
+    const next = Math.min(Math.max(page, 1), total);
+    this.currentPage.set(next);
   }
 
-  isActionInFlight(reservationId: string): boolean {
-    return this.actionInFlight === reservationId;
+  refresh(): void {
+    this.loadReservations();
   }
 
-  private loadReservations(page: number): void {
-    this.loading = true;
-    this.error = null;
-    const { search, status } = this.filterForm.getRawValue();
+  getCustomerLabel(reservation: Reservation): string {
+    return `${reservation.customerFirstName} ${reservation.customerLastName}`.trim();
+  }
+
+  getStatusLabel(status: ReservationStatus): string {
+    switch (status) {
+      case 'PENDING':
+        return 'Pendiente';
+      case 'ACCEPTED':
+        return 'Aceptada';
+      case 'CANCELED':
+        return 'Cancelada';
+      default:
+        return status;
+    }
+  }
+
+  private loadReservations(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.reservationsApi
-      .list({
-        page,
-        pageSize: this.pageSize,
-        search: search || undefined,
-        status: status || undefined
-      })
+      .list()
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.loading = false;
-        })
+        finalize(() => this.loading.set(false))
       )
       .subscribe({
-        next: response => this.handlePageResponse(response),
+        next: (reservations) => {
+          this.reservationsSignal.set(reservations);
+          this.currentPage.set(1);
+        },
         error: () => {
-          this.error = 'No se pudieron cargar las reservas.';
+          this.error.set('No se pudieron cargar las reservas.');
+          this.toast.error('No se pudieron cargar las reservas.');
         }
       });
-  }
-
-  private readonly statusLabelMap = new Map<string, string>([
-    ['pending', 'Pendiente'],
-    ['PENDING', 'Pendiente'],
-    ['accepted', 'Aceptada'],
-    ['ACCEPTED', 'Aceptada'],
-    ['confirmed', 'Confirmada'],
-    ['CONFIRMED', 'Confirmada'],
-    ['ready_for_pickup', 'Lista para retiro'],
-    ['READY_FOR_PICKUP', 'Lista para retiro'],
-    ['picked_up', 'Retirada'],
-    ['PICKED_UP', 'Retirada'],
-    ['cancelled', 'Cancelada'],
-    ['CANCELLED', 'Cancelada']
-  ]);
-
-  private handlePageResponse(response: PageResponse<ReservationViewDTO>): void {
-    this.reservations = response.items ?? [];
-    this.totalItems = response.totalItems ?? this.reservations.length;
-    this.page = response.page ?? 1;
-    this.pageSize = response.pageSize ?? (this.reservations.length || this.pageSize);
-    this.totalPages = response.totalPages ??
-      (this.pageSize ? Math.max(1, Math.ceil(this.totalItems / this.pageSize)) : 1);
-  }
-
-  private setActionFeedback(message: string | null, error: string | null): void {
-    this.message = message;
-    this.error = error;
-  }
-
-  acceptReservation(reservation: ReservationViewDTO): void {
-    if (!reservation.id) return;
-    if (!window.confirm(`¿Confirmas aceptar la reserva ${reservation.code}?`)) {
-      return;
-    }
-    this.executeAction(reservation.id, () => this.reservationsApi.accept(reservation.id), () => {
-      this.setActionFeedback(`Reserva ${reservation.code} aceptada correctamente.`, null);
-      this.loadReservations(this.page);
-    });
-  }
-
-  confirmReservation(reservation: ReservationViewDTO, createSale: boolean): void {
-    if (!reservation.id) return;
-    if (
-      !window.confirm(
-        `¿Confirmas la reserva ${reservation.code}?${createSale ? ' Se generará una venta.' : ''}`
-      )
-    ) {
-      return;
-    }
-    this.executeAction(
-      reservation.id,
-      () => this.reservationsApi.confirm(reservation.id, createSale),
-      () => {
-        this.setActionFeedback(
-          `Reserva ${reservation.code} confirmada${createSale ? ' y venta creada' : ''}.`,
-          null
-        );
-        this.loadReservations(this.page);
-      }
-    );
-  }
-
-  cancelReservation(reservation: ReservationViewDTO): void {
-    if (!reservation.id) return;
-    const reason = window.prompt('Motivo de cancelación (opcional):') ?? undefined;
-    if (!window.confirm(`¿Quieres cancelar la reserva ${reservation.code}?`)) {
-      return;
-    }
-    this.executeAction(
-      reservation.id,
-      () => this.reservationsApi.cancel(reservation.id, reason ? { reason } : {}),
-      () => {
-        this.setActionFeedback(`Reserva ${reservation.code} cancelada.`, null);
-        this.loadReservations(this.page);
-      }
-    );
-  }
-
-  private executeAction(
-    reservationId: string,
-    requestFactory: () => ReturnType<ReservationsApi['accept']>,
-    onSuccess: () => void
-  ): void {
-    this.actionInFlight = reservationId;
-    this.setActionFeedback(null, null);
-    requestFactory()
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.actionInFlight = null;
-        })
-      )
-      .subscribe({
-        next: () => onSuccess(),
-        error: () => {
-          this.setActionFeedback(null, 'No se pudo completar la acción sobre la reserva.');
-        }
-      });
-  }
-
-  getProductLabel(reservation: ReservationViewDTO): string {
-    const firstItem = reservation.items && reservation.items.length ? reservation.items[0] : null;
-    if (firstItem) {
-      return firstItem.productTitle || firstItem.productId || '—';
-    }
-    return reservation.productName || reservation.productId || '—';
-  }
-
-  getCustomerLabel(reservation: ReservationViewDTO): string {
-    const nameParts = [reservation.customerFirstName, reservation.customerLastName]
-      .map(part => part?.trim())
-      .filter(Boolean) as string[];
-    if (nameParts.length) {
-      return nameParts.join(' ');
-    }
-    if (reservation.customerName) {
-      return reservation.customerName;
-    }
-    return (
-      reservation.customerEmail ||
-      reservation.customerDni ||
-      reservation.customerPhone ||
-      reservation.customerId ||
-      '—'
-    );
-  }
-
-  getReservationQuantity(reservation: ReservationViewDTO): number {
-    if (reservation.items && reservation.items.length) {
-      return reservation.items.reduce((total, item) => total + (item.quantity ?? 0), 0);
-    }
-    return reservation.quantity ?? 0;
-  }
-
-  getStatusLabel(status: string | null | undefined): string {
-    if (!status) {
-      return '—';
-    }
-    const direct = this.statusLabelMap.get(status);
-    if (direct) {
-      return direct;
-    }
-    const normalized = status.toLowerCase();
-    const normalizedMatch = this.statusLabelMap.get(normalized);
-    if (normalizedMatch) {
-      return normalizedMatch;
-    }
-    const formatted = normalized
-      .split(/[_-]/)
-      .filter(Boolean)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-    return formatted || status;
-  }
-
-  getReservationDate(reservation: ReservationViewDTO): string | undefined {
-    return reservation.reservationDate || reservation.reservedAt || reservation.createdAt;
   }
 }

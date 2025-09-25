@@ -1,67 +1,203 @@
-import { CommonModule, DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { ReservationsApi } from '../../../core/api/reservations.api';
-import { ReservationViewDTO } from '../../../core/models/reservation';
+import { Reservation, ReservationStatus } from '../../../core/models/reservation';
+import { ToastService } from '../../../shared/services/toast.service';
 
 @Component({
   selector: 'app-admin-reservation-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, RouterModule],
+  styles: [
+    `
+      :host {
+        display: block;
+        padding: 2rem;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        text-decoration: none;
+        color: #2563eb;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 0.75rem;
+        border: 1px solid #e5e7eb;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+      }
+
+      .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-badge.PENDING {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .status-badge.ACCEPTED {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status-badge.CANCELED {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      dl.metadata {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+
+      dl.metadata dt {
+        font-weight: 600;
+        color: #6b7280;
+      }
+
+      dl.metadata dd {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        background: #fff;
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+
+      th,
+      td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .actions button {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .actions button.primary {
+        background: #2563eb;
+        color: #fff;
+      }
+
+      .actions button.danger {
+        background: #dc2626;
+        color: #fff;
+      }
+
+      .actions button[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .loading,
+      .error {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        margin-top: 1rem;
+      }
+
+      .error {
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #991b1b;
+      }
+    `
+  ],
   template: `
-    <a routerLink="/admin/reservations">&larr; Volver al listado</a>
+    <a routerLink="/admin/reservations" class="back-link">← Volver</a>
 
-    <section *ngIf="loading" class="loading">Cargando reserva…</section>
+    <section *ngIf="loading()" class="loading">Cargando reserva…</section>
+    <section *ngIf="error()" class="error">{{ error() }}</section>
 
-    <section *ngIf="error" class="alert error">{{ error }}</section>
-    <section *ngIf="message" class="alert success">{{ message }}</section>
-
-    <ng-container *ngIf="!loading && reservation">
-      <h1>Reserva {{ reservation.code }}</h1>
-
-      <dl class="detail">
+    <article *ngIf="reservation() as reservation" class="card">
+      <header class="header">
         <div>
-          <dt>Producto</dt>
-          <dd>{{ getProductLabel(reservation) }}</dd>
+          <h1>Reserva {{ reservation.code }}</h1>
+          <p>Creada el {{ reservation.createdAt | date: 'medium' }}</p>
         </div>
+        <span class="status-badge {{ reservation.status }}">{{ getStatusLabel(reservation.status) }}</span>
+      </header>
+
+      <dl class="metadata">
         <div>
           <dt>Cliente</dt>
-          <dd>{{ getCustomerLabel(reservation) }}</dd>
+          <dd>{{ customerName() }}</dd>
         </div>
         <div>
-          <dt>Cantidad</dt>
-          <dd>{{ getReservationQuantity(reservation) }}</dd>
+          <dt>Documento</dt>
+          <dd>{{ reservation.customerDni }}</dd>
         </div>
         <div>
-          <dt>Estado</dt>
-          <dd>{{ getStatusLabel(reservation.status) }}</dd>
+          <dt>Email</dt>
+          <dd>{{ reservation.customerEmail }}</dd>
         </div>
         <div>
-          <dt>Reservada</dt>
-          <dd>{{ getReservationDate(reservation) | date: 'medium' }}</dd>
+          <dt>Teléfono</dt>
+          <dd>{{ reservation.customerPhone }}</dd>
         </div>
-        <div *ngIf="reservation.pickupDeadline">
+        <div>
+          <dt>Fecha de reserva</dt>
+          <dd>{{ reservation.reservationDate | date: 'medium' }}</dd>
+        </div>
+        <div>
           <dt>Fecha límite de retiro</dt>
           <dd>{{ reservation.pickupDeadline | date: 'medium' }}</dd>
         </div>
-        <div *ngIf="reservation.totalAmount !== undefined">
-          <dt>Monto total</dt>
-          <dd>{{ reservation.totalAmount | number: '1.2-2' }}</dd>
+        <div>
+          <dt>Total</dt>
+          <dd>{{ reservation.totalAmount | currency: 'USD' }}</dd>
         </div>
-        <div *ngIf="reservation.customerEmail || reservation.customerPhone">
-          <dt>Contacto</dt>
-          <dd>
-            <ng-container *ngIf="reservation.customerEmail">{{ reservation.customerEmail }}</ng-container>
-            <ng-container *ngIf="reservation.customerEmail && reservation.customerPhone"> · </ng-container>
-            <ng-container *ngIf="reservation.customerPhone">{{ reservation.customerPhone }}</ng-container>
-          </dd>
-        </div>
-        <div *ngIf="reservation.desiredPickupDate">
-          <dt>Retiro deseado</dt>
-          <dd>{{ reservation.desiredPickupDate | date }}</dd>
+        <div>
+          <dt>Última actualización</dt>
+          <dd>{{ reservation.updatedAt | date: 'medium' }}</dd>
         </div>
         <div *ngIf="reservation.notes">
           <dt>Notas</dt>
@@ -69,9 +205,9 @@ import { ReservationViewDTO } from '../../../core/models/reservation';
         </div>
       </dl>
 
-      <section *ngIf="reservation.items?.length" class="reservation-items">
-        <h2>Ítems reservados</h2>
-        <table class="data-table">
+      <section *ngIf="reservation.items.length" class="card">
+        <h2>Ítems</h2>
+        <table>
           <thead>
             <tr>
               <th>Producto</th>
@@ -82,216 +218,146 @@ import { ReservationViewDTO } from '../../../core/models/reservation';
           </thead>
           <tbody>
             <tr *ngFor="let item of reservation.items">
-              <td>{{ item.productTitle || item.productId }}</td>
+              <td>{{ item.productTitle }}</td>
               <td>{{ item.quantity }}</td>
-              <td>{{ item.unitPrice | number: '1.2-2' }}</td>
-              <td>{{ item.totalPrice | number: '1.2-2' }}</td>
+              <td>{{ item.unitPrice | currency: 'USD' }}</td>
+              <td>{{ item.totalPrice | currency: 'USD' }}</td>
             </tr>
           </tbody>
         </table>
       </section>
 
-      <section class="actions">
-        <h2>Acciones</h2>
-        <label>
-          Crear venta al confirmar
-          <input type="checkbox" [formControl]="confirmSaleControl" />
-        </label>
-
-        <div class="action-buttons">
-          <button type="button" (click)="accept()" [disabled]="actionLoading">Aceptar</button>
-          <button type="button" (click)="confirm()" [disabled]="actionLoading">Confirmar</button>
-        </div>
-
-        <form class="cancel-form" [formGroup]="cancelForm" (ngSubmit)="cancel()">
-          <label>
-            Motivo de cancelación
-            <textarea formControlName="reason" rows="3"></textarea>
-          </label>
-          <button type="submit" [disabled]="actionLoading">Cancelar reserva</button>
-        </form>
-      </section>
-    </ng-container>
+      <footer class="actions">
+        <button
+          type="button"
+          class="primary"
+          (click)="acceptReservation()"
+          [disabled]="!canAccept() || actionLoading()"
+        >
+          Aceptar
+        </button>
+        <button
+          type="button"
+          class="danger"
+          (click)="cancelReservation()"
+          [disabled]="!canCancel() || actionLoading()"
+        >
+          Cancelar
+        </button>
+      </footer>
+    </article>
   `
 })
 export class AdminReservationDetailComponent {
   private readonly reservationsApi = inject(ReservationsApi);
   private readonly route = inject(ActivatedRoute);
-  private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
-  private readonly statusLabelMap = new Map<string, string>([
-    ['pending', 'Pendiente'],
-    ['PENDING', 'Pendiente'],
-    ['accepted', 'Aceptada'],
-    ['ACCEPTED', 'Aceptada'],
-    ['confirmed', 'Confirmada'],
-    ['CONFIRMED', 'Confirmada'],
-    ['ready_for_pickup', 'Lista para retiro'],
-    ['READY_FOR_PICKUP', 'Lista para retiro'],
-    ['picked_up', 'Retirada'],
-    ['PICKED_UP', 'Retirada'],
-    ['cancelled', 'Cancelada'],
-    ['CANCELLED', 'Cancelada']
-  ]);
+  readonly reservation = signal<Reservation | null>(null);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+  readonly actionLoading = signal(false);
 
-  readonly cancelForm = this.fb.nonNullable.group({
-    reason: ['']
+  readonly customerName = computed(() => {
+    const reservation = this.reservation();
+    if (!reservation) {
+      return '';
+    }
+    return `${reservation.customerFirstName} ${reservation.customerLastName}`.trim();
   });
-  readonly confirmSaleControl = this.fb.nonNullable.control(true);
 
-  reservationId: string | null = null;
-  reservation: ReservationViewDTO | null = null;
-  loading = false;
-  actionLoading = false;
-  message: string | null = null;
-  error: string | null = null;
+  readonly canAccept = computed(() => this.reservation()?.status === 'PENDING');
+  readonly canCancel = computed(() => this.reservation()?.status !== 'CANCELED');
 
   constructor() {
-    this.reservationId = this.route.snapshot.paramMap.get('id');
-    if (this.reservationId) {
-      this.loadReservation(this.reservationId);
-    } else {
-      this.error = 'No se encontró la reserva solicitada.';
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const id = params.get('id');
+      if (id) {
+        this.loadReservation(id);
+      }
+    });
+  }
+
+  getStatusLabel(status: ReservationStatus): string {
+    switch (status) {
+      case 'PENDING':
+        return 'Pendiente';
+      case 'ACCEPTED':
+        return 'Aceptada';
+      case 'CANCELED':
+        return 'Cancelada';
+      default:
+        return status;
     }
+  }
+
+  acceptReservation(): void {
+    const reservation = this.reservation();
+    if (!reservation || !this.canAccept()) {
+      return;
+    }
+    this.actionLoading.set(true);
+    this.reservationsApi
+      .accept(reservation.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.actionLoading.set(false))
+      )
+      .subscribe({
+        next: (updated) => {
+          this.reservation.set(updated);
+          this.toast.success('Reserva aceptada correctamente.');
+        },
+        error: () => {
+          this.toast.error('No fue posible aceptar la reserva.');
+        }
+      });
+  }
+
+  cancelReservation(): void {
+    const reservation = this.reservation();
+    if (!reservation || !this.canCancel()) {
+      return;
+    }
+    if (!window.confirm('¿Deseas cancelar esta reserva?')) {
+      return;
+    }
+    this.actionLoading.set(true);
+    this.reservationsApi
+      .cancel(reservation.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.actionLoading.set(false))
+      )
+      .subscribe({
+        next: (updated) => {
+          this.reservation.set(updated);
+          this.toast.success('Reserva cancelada correctamente.');
+        },
+        error: () => {
+          this.toast.error('No fue posible cancelar la reserva.');
+        }
+      });
   }
 
   private loadReservation(id: string): void {
-    this.loading = true;
-    this.error = null;
+    this.loading.set(true);
+    this.error.set(null);
     this.reservationsApi
-      .getById(id)
+      .get(id)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.loading = false;
-        })
+        finalize(() => this.loading.set(false))
       )
       .subscribe({
-        next: reservation => {
-          this.reservation = reservation;
+        next: (reservation) => {
+          this.reservation.set(reservation);
         },
         error: () => {
-          this.error = 'No se pudo cargar la reserva.';
+          this.error.set('No se pudo cargar la reserva solicitada.');
+          this.toast.error('No se pudo cargar la reserva solicitada.');
         }
       });
-  }
-
-  accept(): void {
-    if (!this.reservationId || !this.reservation) return;
-    if (!window.confirm(`¿Deseas aceptar la reserva ${this.reservation.code}?`)) return;
-    this.executeAction(() => this.reservationsApi.accept(this.reservationId!), 'Reserva aceptada.');
-  }
-
-  confirm(): void {
-    if (!this.reservationId || !this.reservation) return;
-    const createSale = this.confirmSaleControl.value;
-    if (
-      !window.confirm(
-        `¿Deseas confirmar la reserva ${this.reservation.code}?${createSale ? ' Se generará una venta.' : ''}`
-      )
-    ) {
-      return;
-    }
-    this.executeAction(
-      () => this.reservationsApi.confirm(this.reservationId!, createSale),
-      createSale ? 'Reserva confirmada y venta creada.' : 'Reserva confirmada.'
-    );
-  }
-
-  cancel(): void {
-    if (!this.reservationId || !this.reservation) return;
-    if (!window.confirm(`¿Deseas cancelar la reserva ${this.reservation.code}?`)) return;
-    const { reason } = this.cancelForm.getRawValue();
-    this.executeAction(
-      () => this.reservationsApi.cancel(this.reservationId!, reason ? { reason } : {}),
-      'Reserva cancelada.'
-    );
-  }
-
-  private executeAction(
-    requestFactory: () => ReturnType<ReservationsApi['accept']>,
-    successMessage: string
-  ): void {
-    this.actionLoading = true;
-    this.message = null;
-    this.error = null;
-    requestFactory()
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.actionLoading = false;
-        })
-      )
-      .subscribe({
-        next: () => {
-          this.message = successMessage;
-          if (this.reservationId) {
-            this.loadReservation(this.reservationId);
-          }
-        },
-        error: () => {
-          this.error = 'No fue posible completar la acción.';
-        }
-      });
-  }
-
-  getProductLabel(reservation: ReservationViewDTO): string {
-    const firstItem = reservation.items && reservation.items.length ? reservation.items[0] : null;
-    if (firstItem) {
-      return firstItem.productTitle || firstItem.productId || '—';
-    }
-    return reservation.productName || reservation.productId || '—';
-  }
-
-  getCustomerLabel(reservation: ReservationViewDTO): string {
-    const nameParts = [reservation.customerFirstName, reservation.customerLastName]
-      .map(part => part?.trim())
-      .filter(Boolean) as string[];
-    if (nameParts.length) {
-      return nameParts.join(' ');
-    }
-    if (reservation.customerName) {
-      return reservation.customerName;
-    }
-    return (
-      reservation.customerEmail ||
-      reservation.customerDni ||
-      reservation.customerPhone ||
-      reservation.customerId ||
-      '—'
-    );
-  }
-
-  getReservationQuantity(reservation: ReservationViewDTO): number {
-    if (reservation.items && reservation.items.length) {
-      return reservation.items.reduce((total, item) => total + (item.quantity ?? 0), 0);
-    }
-    return reservation.quantity ?? 0;
-  }
-
-  getStatusLabel(status: string | null | undefined): string {
-    if (!status) {
-      return '—';
-    }
-    const direct = this.statusLabelMap.get(status);
-    if (direct) {
-      return direct;
-    }
-    const normalized = status.toLowerCase();
-    const normalizedMatch = this.statusLabelMap.get(normalized);
-    if (normalizedMatch) {
-      return normalizedMatch;
-    }
-    const formatted = normalized
-      .split(/[_-]/)
-      .filter(Boolean)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-    return formatted || status;
-  }
-
-  getReservationDate(reservation: ReservationViewDTO): string | undefined {
-    return reservation.reservationDate || reservation.reservedAt || reservation.createdAt;
   }
 }
