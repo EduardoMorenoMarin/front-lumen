@@ -3,7 +3,7 @@
  * Endpoint: POST /api/v1/auth/login
  */
 export interface AuthLoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -24,8 +24,7 @@ export interface AuthLoginResponse {
  */
 export interface MeResponse {
   id: string;
-  username: string;
-  email?: string;
+  email: string;
   roles: string[];
   displayName?: string;
 }

@@ -13,10 +13,11 @@ import { AuthService } from '../../../core/auth/auth.service';
       <h1>Iniciar sesion</h1>
       <form (ngSubmit)="onSubmit()" novalidate>
         <label>
-          Usuario
+          Correo electronico
           <input
-            name="username"
-            [(ngModel)]="username"
+            name="email"
+            type="email"
+            [(ngModel)]="email"
             [disabled]="loading"
             required
           />
@@ -33,7 +34,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           />
         </label>
 
-        <button type="submit" [disabled]="loading || !username || !password">
+        <button type="submit" [disabled]="loading || !email || !password">
           {{ loading ? 'Ingresando...' : 'Entrar' }}
         </button>
       </form>
@@ -46,20 +47,20 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  username = '';
+  email = '';
   password = '';
   loading = false;
   error = '';
 
   onSubmit(): void {
-    if (!this.username || !this.password || this.loading) {
+    if (!this.email || !this.password || this.loading) {
       return;
     }
 
     this.loading = true;
     this.error = '';
 
-    this.auth.login({ username: this.username, password: this.password }).subscribe({
+    this.auth.login({ email: this.email, password: this.password }).subscribe({
       next: () => {
         this.loading = false;
         this.router.navigate(['/admin']);

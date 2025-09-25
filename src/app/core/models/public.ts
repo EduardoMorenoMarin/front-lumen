@@ -34,6 +34,7 @@ export interface PublicReservationCreateRequest {
   productId: string;
   quantity: number;
   desiredPickupDate?: string; // ISO date string
+  customerDocument?: string; // e.g. DNI
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;

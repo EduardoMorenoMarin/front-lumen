@@ -11,7 +11,7 @@ import { AuthService } from '../../../core/auth/auth.service';
   template: `
     <h1>Login</h1>
     <form (ngSubmit)="onSubmit()">
-      <input name="username" [(ngModel)]="username" placeholder="Usuario" />
+      <input name="email" [(ngModel)]="email" type="email" placeholder="Correo electronico" />
       <input name="password" [(ngModel)]="password" type="password" placeholder="Contraseña" />
       <button type="submit">Entrar</button>
     </form>
@@ -21,11 +21,11 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  username = '';
+  email = '';
   password = '';
 
   onSubmit() {
-    this.auth.login({ username: this.username, password: this.password }).subscribe({
+    this.auth.login({ email: this.email, password: this.password }).subscribe({
       next: () => this.router.navigate(['/admin']),
     });
   }
