@@ -112,6 +112,11 @@ import { ToastService } from '../../../shared/services/toast.service';
         color: #991b1b;
       }
 
+      .status-badge.CONFIRMED {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -274,7 +279,8 @@ export class AdminReservationsListComponent {
   readonly statusOptions: { value: ReservationStatus; label: string }[] = [
     { value: 'PENDING', label: 'Pendiente' },
     { value: 'ACCEPTED', label: 'Aceptada' },
-    { value: 'CANCELED', label: 'Cancelada' }
+    { value: 'CANCELED', label: 'Cancelada' },
+    { value: 'CONFIRMED', label: 'Retirada' }
   ];
 
   readonly filterForm = this.fb.nonNullable.group({
@@ -364,6 +370,8 @@ export class AdminReservationsListComponent {
         return 'Aceptada';
       case 'CANCELED':
         return 'Cancelada';
+      case 'CONFIRMED':
+        return 'Retirada';
       default:
         return status;
     }

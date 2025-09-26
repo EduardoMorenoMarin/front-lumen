@@ -4,7 +4,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
+import { CustomersApi } from '../../../core/api/customers.api';
 import { ReservationsApi } from '../../../core/api/reservations.api';
+import { CustomerViewDTO } from '../../../core/models/customer';
 import { ReservationCreateRequest } from '../../../core/models/reservation';
 import { ToastService } from '../../../shared/services/toast.service';
 
@@ -80,6 +82,32 @@ interface ProductOption {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       }
 
+      .existing-customer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .link-button {
+        align-self: flex-start;
+        background: transparent;
+        border: none;
+        color: #2563eb;
+        cursor: pointer;
+        font-weight: 600;
+        padding: 0;
+      }
+
+      .link-button[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .helper {
+        font-size: 0.85rem;
+        color: #6b7280;
+      }
+
       .items-table {
         border-collapse: collapse;
         width: 100%;
@@ -145,20 +173,41 @@ interface ProductOption {
         <label>
           Modo de selección
           <select formControlName="customerMode">
-            <option value="existing">Cliente existente (ID)</option>
-            <option value="new">Cliente nuevo</option>
+            <option value="existing">Cliente existente</option>
+            <option value="new">Agregar cliente rápido</option>
           </select>
         </label>
 
         <ng-container [ngSwitch]="reservationForm.controls.customerMode.value">
-          <div *ngSwitchCase="'existing'" class="inline">
+          <div *ngSwitchCase="'existing'" class="existing-customer">
             <label>
-              ID de cliente
-              <input formControlName="customerId" placeholder="UUID v4" />
+              Cliente
+              <select formControlName="customerId">
+                <option value="">Selecciona un cliente</option>
+                <option *ngFor="let customer of customers()" [value]="customer.id">
+                  {{ getCustomerLabel(customer) }}
+                </option>
+              </select>
               <span class="error" *ngIf="showError('customerId')">
-                Debe ingresar un UUID válido.
+                Selecciona un cliente válido.
               </span>
             </label>
+            <p class="helper" *ngIf="customersLoading()">Cargando clientes…</p>
+            <p
+              class="helper"
+              *ngIf="!customersLoading() && !customers().length && !customersError()"
+            >
+              No hay clientes registrados. Usa “Agregar cliente rápido”.
+            </p>
+            <button
+              type="button"
+              class="link-button"
+              (click)="refreshCustomers()"
+              [disabled]="customersLoading()"
+            >
+              Actualizar lista
+            </button>
+            <p class="error" *ngIf="customersError()">{{ customersError() }}</p>
           </div>
 
           <div *ngSwitchCase="'new'" class="inline" formGroupName="customerData">
@@ -263,6 +312,7 @@ interface ProductOption {
 })
 export class AdminReservationCreateComponent {
   private readonly reservationsApi = inject(ReservationsApi);
+  private readonly customersApi = inject(CustomersApi);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -270,6 +320,9 @@ export class AdminReservationCreateComponent {
 
   readonly submitting = signal(false);
   readonly items = signal<ReservationItemDraft[]>([]);
+  readonly customers = signal<CustomerViewDTO[]>([]);
+  readonly customersLoading = signal(false);
+  readonly customersError = signal<string | null>(null);
 
   readonly productCatalog: ProductOption[] = [
     {
@@ -317,6 +370,7 @@ export class AdminReservationCreateComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((mode) => this.updateCustomerValidators(mode));
     this.updateCustomerValidators(this.reservationForm.controls.customerMode.value);
+    this.loadCustomers();
   }
 
   addItem(): void {
@@ -372,10 +426,17 @@ export class AdminReservationCreateComponent {
           this.toast.success('Reserva creada correctamente.');
           this.router.navigate(['/admin/reservations', reservation.id]);
         },
-        error: () => {
+        error: (err) => {
+          if (err?.status === 400) {
+            console.error('Reserva - payload enviado', request);
+          }
           this.toast.error('No fue posible crear la reserva.');
         }
       });
+  }
+
+  refreshCustomers(): void {
+    this.loadCustomers();
   }
 
   showError(controlPath: string): boolean {
@@ -399,21 +460,44 @@ export class AdminReservationCreateComponent {
     };
 
     if (customerMode === 'existing') {
-      if (!customerId?.trim()) {
-        this.toast.error('Debe indicar el ID de cliente.');
+      const trimmedId = customerId?.trim() ?? '';
+      if (!trimmedId) {
+        this.toast.error('Debe seleccionar un cliente válido.');
         return null;
       }
-      payload.customerId = customerId.trim();
+      const customer = this.customers().find((item) => item.id === trimmedId);
+      if (!customer) {
+        this.toast.error('Debe seleccionar un cliente válido.');
+        return null;
+      }
+      payload.customerId = trimmedId;
+      const sanitizedPhone = this.sanitizePhone(customer.phone);
+      payload.customerData = {
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        dni: customer.dni,
+        email: customer.email,
+        phone: sanitizedPhone
+      };
     } else {
       if (!customerData) {
         return null;
       }
+      const firstName = customerData.firstName!.trim();
+      const lastName = customerData.lastName!.trim();
+      const dni = customerData.dni!.trim();
+      const email = customerData.email!.trim();
+      const sanitizedPhone = this.sanitizePhone(customerData.phone ?? '');
+      if (!firstName || !lastName || !dni || !email || !sanitizedPhone) {
+        this.toast.error('Completa los datos del cliente.');
+        return null;
+      }
       payload.customerData = {
-        firstName: customerData.firstName!.trim(),
-        lastName: customerData.lastName!.trim(),
-        dni: customerData.dni!.trim(),
-        email: customerData.email!.trim(),
-        phone: this.sanitizePhone(customerData.phone ?? '')
+        firstName,
+        lastName,
+        dni,
+        email,
+        phone: sanitizedPhone
       };
     }
 
@@ -429,12 +513,18 @@ export class AdminReservationCreateComponent {
         Validators.required,
         Validators.pattern(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/)
       ]);
+      customerIdControl.updateValueAndValidity({ emitEvent: false });
       Object.values(customerDataGroup.controls).forEach((control) => {
         control.clearValidators();
         control.updateValueAndValidity({ emitEvent: false });
       });
+      customerDataGroup.reset(
+        { firstName: '', lastName: '', dni: '', email: '', phone: '' },
+        { emitEvent: false }
+      );
     } else {
       customerIdControl.clearValidators();
+      customerIdControl.setValue('', { emitEvent: false });
       customerIdControl.updateValueAndValidity({ emitEvent: false });
       customerDataGroup.controls.firstName.setValidators([Validators.required]);
       customerDataGroup.controls.lastName.setValidators([Validators.required]);
@@ -457,5 +547,37 @@ export class AdminReservationCreateComponent {
 
   private getControl(path: string) {
     return this.reservationForm.get(path);
+  }
+
+  private loadCustomers(): void {
+    this.customersLoading.set(true);
+    this.customersError.set(null);
+    this.customersApi
+      .list()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.customersLoading.set(false))
+      )
+      .subscribe({
+        next: (customers) => {
+          this.customers.set(customers);
+          const selectedId = this.reservationForm.controls.customerId.value;
+          if (selectedId && !customers.some((customer) => customer.id === selectedId)) {
+            this.reservationForm.controls.customerId.setValue('', { emitEvent: false });
+          }
+          if (!customers.length && this.reservationForm.controls.customerMode.value === 'existing') {
+            this.reservationForm.controls.customerMode.setValue('new');
+          }
+        },
+        error: () => {
+          this.customersError.set('No se pudieron cargar los clientes.');
+          this.toast.error('No se pudieron cargar los clientes.');
+        }
+      });
+  }
+
+  getCustomerLabel(customer: CustomerViewDTO): string {
+    const fullName = `${customer.firstName} ${customer.lastName}`.trim();
+    return customer.dni ? `${fullName} (${customer.dni})` : fullName;
   }
 }

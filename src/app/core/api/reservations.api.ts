@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Reservation,
+  ReservationCancelRequest,
+  ReservationConfirmRequest,
   ReservationCreateRequest,
   ReservationListResponse,
   ReservationStatus
@@ -36,12 +38,22 @@ export class ReservationsApi {
     return this.http.post<Reservation>(this.resourceUrl, request);
   }
 
-  cancel(id: string): Observable<Reservation> {
-    return this.http.post<Reservation>(`${this.resourceUrl}/${encodeURIComponent(id)}/cancel`, {});
+  cancel(id: string, request: ReservationCancelRequest): Observable<Reservation> {
+    return this.http.post<Reservation>(
+      `${this.resourceUrl}/${encodeURIComponent(id)}/cancel`,
+      request
+    );
   }
 
   accept(id: string): Observable<Reservation> {
     return this.http.post<Reservation>(`${this.resourceUrl}/${encodeURIComponent(id)}/accept`, {});
+  }
+
+  confirm(id: string, request: ReservationConfirmRequest): Observable<Reservation> {
+    return this.http.post<Reservation>(
+      `${this.resourceUrl}/${encodeURIComponent(id)}/confirm`,
+      request
+    );
   }
 
   private buildParams(params?: ReservationsListParams): HttpParams | undefined {
