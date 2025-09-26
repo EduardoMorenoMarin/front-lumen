@@ -8,7 +8,9 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   template: `
     <header class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
       <div class="container">
-        <a class="navbar-brand fw-semibold" routerLink="/">Lumen Librería</a>
+        <a class="navbar-brand fw-semibold text-uppercase" routerLink="/">
+          LIBRERIA LUMEN
+        </a>
         <button
           class="navbar-toggler"
           type="button"
@@ -21,7 +23,16 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
           <span class="navbar-toggler-icon"></span>
         </button>
         <nav class="collapse navbar-collapse" id="publicNavbar">
-          <ul class="navbar-nav ms-auto gap-lg-3">
+          <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                routerLink="/"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: true }"
+                >Inicio</a
+              >
+            </li>
             <li class="nav-item">
               <a
                 class="nav-link"
@@ -38,7 +49,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
               <a class="nav-link" routerLink="/reserve" routerLinkActive="active">Reservar</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" routerLink="/login">Ingresar</a>
+              <a class="btn btn-outline-light px-3" routerLink="/login">Iniciar sesión</a>
             </li>
           </ul>
         </nav>

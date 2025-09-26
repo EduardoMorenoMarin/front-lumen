@@ -1,6 +1,6 @@
 /**
  * Public product data visible in the storefront.
- * Endpoint: GET /api/v1/public/products, GET /api/v1/public/products/:id
+ * Endpoint: GET /public/products, GET /public/products/:id
  */
 export interface PublicProductView {
   id: string;
@@ -17,7 +17,7 @@ export interface PublicProductView {
 
 /**
  * Public category data visible in the storefront.
- * Endpoint: GET /api/v1/public/categories, GET /api/v1/public/categories/:id
+ * Endpoint: GET /public/categories, GET /public/categories/:id
  */
 export interface PublicCategoryView {
   id: string;
@@ -28,23 +28,38 @@ export interface PublicCategoryView {
 }
 
 /**
- * Payload to create a reservation from the public site.
- * Endpoint: POST /api/v1/public/reservations
+ * Detailed contact data required when creating a reservation from the public site.
  */
-export interface PublicReservationCreateRequest {
+export interface PublicReservationCustomerData {
+  firstName: string;
+  lastName: string;
+  dni: string;
+  email: string;
+  phone: string;
+}
+
+/**
+ * Information about a product reserved from the public site.
+ */
+export interface PublicReservationItem {
   productId: string;
   quantity: number;
-  desiredPickupDate?: string; // ISO date string
-  customerDocument?: string; // e.g. DNI
-  customerName: string;
-  customerEmail?: string;
-  customerPhone?: string;
+}
+
+/**
+ * Payload to create a reservation from the public site.
+ * Endpoint: POST /public/reservations
+ */
+export interface PublicReservationCreateRequest {
+  customerData: PublicReservationCustomerData;
+  items: PublicReservationItem[];
+  pickupDeadline: string; // ISO date string
   notes?: string;
 }
 
 /**
  * Response returned after creating a reservation on the public site.
- * Endpoint: POST /api/v1/public/reservations
+ * Endpoint: POST /public/reservations
  */
 export interface PublicReservationCreatedResponse {
   reservationId: string;

@@ -6,7 +6,10 @@ export const publicRoutes: Routes = [
     path: '',
     component: PublicLayoutComponent,
     children: [
-      { path: '', redirectTo: 'catalog', pathMatch: 'full' },
+      {
+        path: '',
+        loadComponent: () => import('./views/home.component').then(m => m.PublicHomeComponent)
+      },
       {
         path: 'catalog',
         loadComponent: () => import('./views/catalog-list.component').then(m => m.CatalogListComponent)

@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { PublicProductsApi, PublicReservationsApi } from '../../../core/api';
 import {
   PublicProductView,
-  PublicReservationCreatedResponse,
-  PublicReservationCreateRequest
+  PublicReservationCreateRequest,
+  PublicReservationCreatedResponse
 } from '../../../core/models';
 
 @Component({
@@ -16,20 +16,56 @@ import {
   template: `
     <section class="d-flex flex-column gap-4">
       <header class="bg-white shadow-sm rounded-4 p-4 border">
-        <h1 class="h3 mb-2">Reserva con DNI</h1>
+        <h1 class="h3 mb-2">Reserva con LIBRERIA LUMEN</h1>
         <p class="text-muted mb-0">
-          Completa tus datos y selecciona un producto para apartarlo. Todos los campos son obligatorios
-          salvo las observaciones.
+          Completa tus datos y selecciona un producto para apartarlo. Antes de enviar, revisa el cuerpo
+          JSON para asegurarte de que coincide exactamente con el formato requerido por la API pública.
         </p>
       </header>
 
       <div class="row g-4">
-        <div class="col-12 col-lg-8">
+        <div class="col-12 col-xl-8">
           <form class="card shadow-sm border-0" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-            <div class="card-body">
+            <div class="card-body p-4">
               <fieldset class="border-0 p-0" [disabled]="loading()">
-                <div class="row g-3">
+                <div class="row g-4">
+                  <div class="col-12">
+                    <h2 class="h5 text-primary mb-0">Datos de contacto</h2>
+                  </div>
+
                   <div class="col-md-6">
+                    <label for="firstName" class="form-label">Nombre</label>
+                    <input
+                      id="firstName"
+                      type="text"
+                      class="form-control"
+                      formControlName="firstName"
+                      required
+                      autocomplete="given-name"
+                      [class.is-invalid]="hasError('firstName', 'required')"
+                    />
+                    <div class="invalid-feedback" *ngIf="hasError('firstName', 'required')">
+                      El nombre es obligatorio.
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="lastName" class="form-label">Apellido</label>
+                    <input
+                      id="lastName"
+                      type="text"
+                      class="form-control"
+                      formControlName="lastName"
+                      required
+                      autocomplete="family-name"
+                      [class.is-invalid]="hasError('lastName', 'required')"
+                    />
+                    <div class="invalid-feedback" *ngIf="hasError('lastName', 'required')">
+                      El apellido es obligatorio.
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
                     <label for="dni" class="form-label">DNI</label>
                     <input
                       id="dni"
@@ -50,52 +86,47 @@ import {
                     </div>
                   </div>
 
-                  <div class="col-md-6">
-                    <label for="name" class="form-label">Nombre completo</label>
-                    <input
-                      id="name"
-                      type="text"
-                      class="form-control"
-                      formControlName="customerName"
-                      required
-                      [class.is-invalid]="hasError('customerName', 'required')"
-                    />
-                    <div class="invalid-feedback" *ngIf="hasError('customerName', 'required')">
-                      El nombre es obligatorio.
-                    </div>
-                  </div>
-
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label for="email" class="form-label">Correo electrónico</label>
                     <input
                       id="email"
                       type="email"
                       class="form-control"
-                      formControlName="customerEmail"
+                      formControlName="email"
                       required
-                      [class.is-invalid]="hasError('customerEmail', 'required') || hasError('customerEmail', 'email')"
+                      autocomplete="email"
+                      [class.is-invalid]="hasError('email', 'required') || hasError('email', 'email')"
                     />
-                    <div class="invalid-feedback" *ngIf="hasError('customerEmail', 'required')">
+                    <div class="invalid-feedback" *ngIf="hasError('email', 'required')">
                       El correo es obligatorio.
                     </div>
-                    <div class="invalid-feedback" *ngIf="hasError('customerEmail', 'email')">
+                    <div class="invalid-feedback" *ngIf="hasError('email', 'email')">
                       Ingresa un correo válido.
                     </div>
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label for="phone" class="form-label">Teléfono</label>
                     <input
                       id="phone"
                       type="tel"
                       class="form-control"
-                      formControlName="customerPhone"
+                      formControlName="phone"
                       required
-                      [class.is-invalid]="hasError('customerPhone', 'required')"
+                      autocomplete="tel"
+                      [class.is-invalid]="hasError('phone', 'required')"
                     />
-                    <div class="invalid-feedback" *ngIf="hasError('customerPhone', 'required')">
+                    <div class="invalid-feedback" *ngIf="hasError('phone', 'required')">
                       El teléfono es obligatorio.
                     </div>
+                  </div>
+                </div>
+
+                <hr class="text-secondary-subtle my-4" />
+
+                <div class="row g-4">
+                  <div class="col-12">
+                    <h2 class="h5 text-primary mb-0">Detalle de la reserva</h2>
                   </div>
 
                   <div class="col-md-6">
@@ -120,7 +151,7 @@ import {
                     </div>
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-md-3">
                     <label for="quantity" class="form-label">Cantidad</label>
                     <input
                       id="quantity"
@@ -139,18 +170,24 @@ import {
                     </div>
                   </div>
 
-                  <div class="col-md-6">
-                    <label for="pickup" class="form-label">Fecha límite de retiro</label>
+                  <div class="col-md-3">
+                    <label for="pickupDeadline" class="form-label">Fecha y hora límite</label>
                     <input
-                      id="pickup"
-                      type="date"
+                      id="pickupDeadline"
+                      type="datetime-local"
                       class="form-control"
-                      formControlName="desiredPickupDate"
-                      [min]="today"
-                      [class.is-invalid]="hasError('desiredPickupDate', 'minDate')"
+                      formControlName="pickupDeadline"
+                      required
+                      [min]="pickupDeadlineMinValue"
+                      [class.is-invalid]="
+                        hasError('pickupDeadline', 'required') || hasError('pickupDeadline', 'futureDateTime')
+                      "
                     />
-                    <div class="invalid-feedback" *ngIf="hasError('desiredPickupDate', 'minDate')">
-                      Selecciona una fecha desde hoy en adelante.
+                    <div class="invalid-feedback" *ngIf="hasError('pickupDeadline', 'required')">
+                      La fecha límite es obligatoria.
+                    </div>
+                    <div class="invalid-feedback" *ngIf="hasError('pickupDeadline', 'futureDateTime')">
+                      Selecciona una fecha y hora a partir del momento actual.
                     </div>
                   </div>
 
@@ -165,13 +202,13 @@ import {
                     ></textarea>
                   </div>
                 </div>
-
-                <div class="d-flex justify-content-end mt-4">
-                  <button type="submit" class="btn btn-primary" [disabled]="form.invalid || loading()">
-                    <ng-container *ngIf="!loading(); else loadingTpl">Reservar</ng-container>
-                  </button>
-                </div>
               </fieldset>
+
+              <div class="d-flex justify-content-end mt-4">
+                <button type="submit" class="btn btn-primary" [disabled]="form.invalid || loading()">
+                  <ng-container *ngIf="!loading(); else loadingTpl">Generar reserva</ng-container>
+                </button>
+              </div>
             </div>
           </form>
 
@@ -188,28 +225,41 @@ import {
           </div>
         </div>
 
-        <div class="col-12 col-lg-4">
-          <div class="card shadow-sm border-0 h-100">
-            <div class="card-body d-flex flex-column gap-3">
-              <h2 class="h5 mb-0">Resumen de tu reserva</h2>
-              <p class="text-muted mb-0">
-                Recibirás un correo con el código y la fecha límite una vez confirmada la reserva.
-              </p>
+        <div class="col-12 col-xl-4">
+          <div class="d-flex flex-column gap-3">
+            <div class="card shadow-sm border-0 h-100">
+              <div class="card-body d-flex flex-column gap-3">
+                <h2 class="h5 mb-0">Confirmación de reserva</h2>
+                <p class="text-muted mb-0">
+                  Recibirás un correo con el código y la fecha límite una vez confirmada la reserva.
+                </p>
 
-              <div *ngIf="confirmation() as result; else pending">
-                <div class="alert alert-success" role="status">
-                  <h3 class="h6 fw-semibold">Reserva generada</h3>
-                  <p class="mb-1"><strong>Código:</strong> {{ result.code }}</p>
-                  <p class="mb-1"><strong>ID interno:</strong> {{ result.reservationId }}</p>
-                  <p class="mb-0" *ngIf="result.expiresAt">
-                    <strong>Vence:</strong> {{ result.expiresAt | date: 'longDate' }}
-                  </p>
+                <div *ngIf="confirmation() as result; else pending">
+                  <div class="alert alert-success mb-0" role="status">
+                    <h3 class="h6 fw-semibold">Reserva generada</h3>
+                    <p class="mb-1"><strong>Código:</strong> {{ result.code }}</p>
+                    <p class="mb-1"><strong>ID interno:</strong> {{ result.reservationId }}</p>
+                    <p class="mb-0" *ngIf="result.expiresAt">
+                      <strong>Vence:</strong> {{ result.expiresAt | date: 'longDate' }}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <ng-template #pending>
-                <p class="text-muted">Completa el formulario para generar el código de retiro.</p>
-              </ng-template>
+                <ng-template #pending>
+                  <p class="text-muted mb-0">Completa el formulario para generar el código de retiro.</p>
+                </ng-template>
+              </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+              <div class="card-body d-flex flex-column gap-3">
+                <h2 class="h6 text-uppercase text-muted mb-0">JSON a enviar</h2>
+                <p class="text-muted mb-0">
+                  Verifica cada campo antes de enviar. Este es el cuerpo exacto que se enviará a
+                  <code>POST /public/reservations</code>.
+                </p>
+                <pre class="bg-dark text-white rounded-3 p-3 mb-0 small"><code>{{ requestPreview() }}</code></pre>
+              </div>
             </div>
           </div>
         </div>
@@ -229,16 +279,15 @@ export class ReserveComponent {
   private readonly publicReservationsApi = inject(PublicReservationsApi);
   private readonly publicProductsApi = inject(PublicProductsApi);
 
-  readonly today = new Date().toISOString().split('T')[0];
-
   readonly form = this.fb.nonNullable.group({
+    firstName: ['', Validators.required],
+    lastName: ['', Validators.required],
     dni: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
-    customerName: ['', Validators.required],
-    customerEmail: ['', [Validators.required, Validators.email]],
-    customerPhone: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+    phone: ['', Validators.required],
     productId: ['', Validators.required],
     quantity: [1, [Validators.required, Validators.min(1)]],
-    desiredPickupDate: ['', this.minDateValidator()],
+    pickupDeadline: ['', [Validators.required, this.futureDateTimeValidator()]],
     notes: ['']
   });
 
@@ -246,6 +295,31 @@ export class ReserveComponent {
   readonly error = signal('');
   readonly products = signal<PublicProductView[]>([]);
   readonly confirmation = signal<PublicReservationCreatedResponse | null>(null);
+
+  readonly requestPreview = computed(() => {
+    const raw = this.form.getRawValue();
+    const payload = {
+      customerData: {
+        firstName: raw.firstName || '',
+        lastName: raw.lastName || '',
+        dni: raw.dni || '',
+        email: raw.email || '',
+        phone: raw.phone || ''
+      },
+      items: [
+        {
+          productId: raw.productId || '',
+          quantity: raw.quantity ?? 1
+        }
+      ],
+      pickupDeadline: raw.pickupDeadline ? this.toIsoString(raw.pickupDeadline) : '',
+      ...(raw.notes ? { notes: raw.notes } : {})
+    } satisfies PublicReservationCreateRequest & { notes?: string };
+
+    return JSON.stringify(payload, null, 2);
+  });
+
+  readonly pickupDeadlineMinValue = this.toInputLocalValue(new Date());
 
   constructor() {
     this.fetchProducts();
@@ -263,15 +337,23 @@ export class ReserveComponent {
     }
 
     const raw = this.form.getRawValue();
+
     const request: PublicReservationCreateRequest = {
-      productId: raw.productId,
-      quantity: raw.quantity,
-      desiredPickupDate: raw.desiredPickupDate ? new Date(raw.desiredPickupDate).toISOString() : undefined,
-      customerDocument: raw.dni,
-      customerName: raw.customerName,
-      customerEmail: raw.customerEmail,
-      customerPhone: raw.customerPhone,
-      notes: raw.notes || undefined
+      customerData: {
+        firstName: raw.firstName,
+        lastName: raw.lastName,
+        dni: raw.dni,
+        email: raw.email,
+        phone: raw.phone
+      },
+      items: [
+        {
+          productId: raw.productId,
+          quantity: raw.quantity
+        }
+      ],
+      pickupDeadline: this.toIsoString(raw.pickupDeadline),
+      ...(raw.notes ? { notes: raw.notes } : {})
     };
 
     this.loading.set(true);
@@ -285,13 +367,14 @@ export class ReserveComponent {
         next: (response) => {
           this.confirmation.set(response);
           this.form.reset({
+            firstName: '',
+            lastName: '',
             dni: '',
-            customerName: '',
-            customerEmail: '',
-            customerPhone: '',
+            email: '',
+            phone: '',
             productId: '',
             quantity: 1,
-            desiredPickupDate: '',
+            pickupDeadline: '',
             notes: ''
           });
         },
@@ -322,21 +405,32 @@ export class ReserveComponent {
       });
   }
 
-  private minDateValidator(): ValidatorFn {
+  private futureDateTimeValidator(): ValidatorFn {
     return (control: AbstractControl): Record<string, boolean> | null => {
       if (!control.value) {
         return null;
       }
 
       const selected = new Date(control.value);
-      const today = new Date(this.today);
+      if (Number.isNaN(selected.getTime())) {
+        return { futureDateTime: true };
+      }
 
-      if (selected < today) {
-        return { minDate: true };
+      const now = new Date();
+      if (selected < now) {
+        return { futureDateTime: true };
       }
 
       return null;
     };
   }
 
+  private toIsoString(value: string): string {
+    return new Date(value).toISOString();
+  }
+
+  private toInputLocalValue(date: Date): string {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+  }
 }
