@@ -8,7 +8,7 @@ import { PublicReservationCreateRequest, PublicReservationCreatedResponse } from
 export class PublicReservationsApi {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl;
-  private readonly resource = `${this.baseUrl}/api/v1/public/reservations`;
+  private readonly resource = `${this.baseUrl}/public/reservations`;
 
   create(request: PublicReservationCreateRequest): Observable<PublicReservationCreatedResponse> {
     return this.http.post<PublicReservationCreatedResponse>(this.resource, request);

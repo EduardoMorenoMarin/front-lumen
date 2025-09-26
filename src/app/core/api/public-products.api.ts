@@ -9,7 +9,7 @@ import { PublicProductView } from '../models/public';
 export class PublicProductsApi {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl;
-  private readonly resource = `${this.baseUrl}/api/v1/public/products`;
+  private readonly resource = `${this.baseUrl}/public/products`;
 
   list(params?: PageRequest & { categoryId?: string }): Observable<PageResponse<PublicProductView>> {
     let httpParams = new HttpParams();

@@ -15,5 +15,5 @@ export const appRoutes: Routes = [
     canActivate: [authGuard],
     loadChildren: () => import('./features/admin/admin.routes').then(m => m.adminRoutes)
   },
-  { path: '**', redirectTo: 'catalog', pathMatch: 'full' }
+  { path: '**', redirectTo: '', pathMatch: 'full' }
 ];
