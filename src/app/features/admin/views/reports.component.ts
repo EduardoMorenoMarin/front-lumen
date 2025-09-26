@@ -84,14 +84,29 @@ export class AdminReportsComponent {
 
     const { period, start, end } = this.filters.getRawValue() as ReportFormValue;
 
-    if (new Date(start) > new Date(end)) {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      this.toastService.warning('Las fechas seleccionadas no son válidas.');
+      return;
+    }
+
+    if (startDate > endDate) {
       this.toastService.warning('La fecha de inicio no puede ser posterior a la fecha fin.');
       return;
     }
 
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    const startIso = this.toIsoDateTime(startDate);
+    const endIso = this.toIsoDateTime(endDate);
+
     this.isFetching.set(true);
 
-    const source = period === 'weekly' ? this.reportsApi.weekly(start, end) : this.reportsApi.daily(start, end);
+    const source =
+      period === 'weekly' ? this.reportsApi.weekly(startIso, endIso) : this.reportsApi.daily(startIso, endIso);
 
     source
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.isFetching.set(false)))
@@ -127,5 +142,9 @@ export class AdminReportsComponent {
     link.click();
     URL.revokeObjectURL(url);
     this.toastService.success('Reporte exportado con éxito.');
+  }
+
+  private toIsoDateTime(date: Date): string {
+    return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
   }
 }
