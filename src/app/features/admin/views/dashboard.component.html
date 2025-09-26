@@ -1,0 +1,91 @@
+<section class="page-header">
+  <div>
+    <h1>Dashboard administrativo</h1>
+    <p class="page-header__subtitle">
+      Resumen rápido de la operación para hoy {{ today | dateFormat: 'es-PE': { dateStyle: 'long' } }}.
+    </p>
+  </div>
+  <button type="button" (click)="reload()" [disabled]="loading()" class="btn btn--ghost">
+    {{ loading() ? 'Actualizando…' : 'Actualizar' }}
+  </button>
+</section>
+
+<section class="metrics" aria-label="Indicadores principales">
+  <article class="metric-card">
+    <h2>Reservas pendientes</h2>
+    <strong>{{ metrics().pendingReservations }}</strong>
+    <p>Esperando confirmación del equipo.</p>
+  </article>
+  <article class="metric-card">
+    <h2>Reservas de hoy</h2>
+    <strong>{{ metrics().todaysReservations }}</strong>
+    <p>Solicitadas para la fecha actual.</p>
+  </article>
+  <article class="metric-card">
+    <h2>Clientes registrados</h2>
+    <strong>{{ metrics().customers }}</strong>
+    <p>Cuenta total en el sistema.</p>
+  </article>
+  <article class="metric-card">
+    <h2>Productos activos</h2>
+    <strong>{{ metrics().activeProducts }}</strong>
+    <p>Disponibles para reservar o vender.</p>
+  </article>
+  <article class="metric-card metric-card--highlight">
+    <h2>Ventas del día</h2>
+    <strong>{{ metrics().todaysSalesAmount | currencyFormat: metrics().currency }}</strong>
+    <p>{{ metrics().todaysSalesOrders }} pedidos registrados.</p>
+  </article>
+</section>
+
+<section *ngIf="error()" class="alert alert--error">{{ error() }}</section>
+
+<section class="dashboard-grid">
+  <article class="panel">
+    <header class="panel__header">
+      <h2>Reservas pendientes recientes</h2>
+      <span *ngIf="pendingReservations().length" class="panel__counter">
+        {{ pendingReservations().length }} pendientes
+      </span>
+    </header>
+
+    <p *ngIf="!pendingReservations().length && !loading()" class="panel__empty">
+      ¡Todo al día! No tienes reservas pendientes por revisar.
+    </p>
+
+    <ul *ngIf="pendingReservations().length" class="reservation-list">
+      <li *ngFor="let reservation of pendingReservations()">
+        <div>
+          <strong>{{ reservation.code }}</strong>
+          <span>{{ reservation.reservationDate | dateFormat: 'es-PE': { dateStyle: 'medium', timeStyle: 'short' } }}</span>
+        </div>
+        <div class="reservation-list__meta">
+          <span>{{ reservation.customerFirstName }} {{ reservation.customerLastName }}</span>
+          <strong>{{ reservation.totalAmount | currencyFormat: 'PEN' }}</strong>
+        </div>
+      </li>
+    </ul>
+  </article>
+
+  <article class="panel">
+    <header class="panel__header">
+      <h2>Ventas de los últimos 7 días</h2>
+    </header>
+
+    <p *ngIf="!salesTrend().length && !loading()" class="panel__empty">
+      Aún no hay registros de ventas para la semana.
+    </p>
+
+    <ol *ngIf="salesTrend().length" class="sales-list">
+      <li *ngFor="let sale of salesTrend()">
+        <span class="sales-list__date">{{ sale.date | dateFormat: 'es-PE' }}</span>
+        <span class="sales-list__amount">{{ sale.totalSales | currencyFormat: sale.currency }}</span>
+        <span class="sales-list__orders">{{ sale.totalOrders }} pedidos</span>
+      </li>
+    </ol>
+  </article>
+</section>
+
+<footer class="dashboard-footer" *ngIf="lastUpdated()">
+  Última actualización: {{ lastUpdated() | dateFormat: 'es-PE': { dateStyle: 'medium', timeStyle: 'short' } }}
+</footer>
