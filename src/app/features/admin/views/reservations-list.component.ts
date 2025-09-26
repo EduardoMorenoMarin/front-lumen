@@ -221,7 +221,6 @@ import { ToastService } from '../../../shared/services/toast.service';
           <th>Cliente</th>
           <th>Estado</th>
           <th>Fecha de reserva</th>
-          <th>Fecha límite</th>
           <th>Total</th>
           <th></th>
         </tr>
@@ -232,7 +231,6 @@ import { ToastService } from '../../../shared/services/toast.service';
           <td>{{ getCustomerLabel(reservation) }}</td>
           <td><span class="status-badge {{ reservation.status }}">{{ getStatusLabel(reservation.status) }}</span></td>
           <td>{{ reservation.reservationDate | date: 'short' }}</td>
-          <td>{{ reservation.pickupDeadline | date: 'short' }}</td>
           <td>{{ reservation.totalAmount | currency: 'USD' }}</td>
           <td class="table-actions">
             <a [routerLink]="['/admin/reservations', reservation.id]">Ver</a>

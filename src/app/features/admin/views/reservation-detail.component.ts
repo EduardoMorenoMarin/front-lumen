@@ -198,10 +198,6 @@ import { ToastService } from '../../../shared/services/toast.service';
           <dd>{{ reservation.reservationDate | date: 'medium' }}</dd>
         </div>
         <div>
-          <dt>Fecha límite de retiro</dt>
-          <dd>{{ reservation.pickupDeadline | date: 'medium' }}</dd>
-        </div>
-        <div>
           <dt>Total</dt>
           <dd>{{ reservation.totalAmount | currency: 'USD' }}</dd>
         </div>

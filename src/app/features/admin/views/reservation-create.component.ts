@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { CustomersApi } from '../../../core/api/customers.api';
+import { ProductsApi } from '../../../core/api/products.api';
 import { ReservationsApi } from '../../../core/api/reservations.api';
 import { CustomerViewDTO } from '../../../core/models/customer';
 import { ReservationCreateRequest } from '../../../core/models/reservation';
@@ -245,9 +246,12 @@ interface ProductOption {
         <div class="inline">
           <label>
             Producto
-            <select formControlName="productId">
+            <select
+              formControlName="productId"
+              [disabled]="productsLoading() && !productOptions().length"
+            >
               <option value="" disabled>Seleccione un producto</option>
-              <option *ngFor="let product of productCatalog" [value]="product.id">
+              <option *ngFor="let product of productOptions()" [value]="product.id">
                 {{ product.title }} — {{ product.unitPrice | currency: 'USD' }}
               </option>
             </select>
@@ -263,6 +267,22 @@ interface ProductOption {
             </span>
           </label>
         </div>
+        <p class="helper" *ngIf="productsLoading()">Cargando productos…</p>
+        <p class="error" *ngIf="productsError()">{{ productsError() }}</p>
+        <p
+          class="helper"
+          *ngIf="!productsLoading() && !productOptions().length && !productsError()"
+        >
+          No hay productos disponibles.
+        </p>
+        <button
+          type="button"
+          class="link-button"
+          (click)="refreshProducts()"
+          [disabled]="productsLoading()"
+        >
+          Actualizar productos
+        </button>
         <button type="button" (click)="addItem()">Agregar ítem</button>
 
         <table class="items-table" *ngIf="items().length">
@@ -288,14 +308,7 @@ interface ProductOption {
       </fieldset>
 
       <fieldset>
-        <legend>Programación</legend>
-        <div class="inline">
-          <label>
-            Fecha límite de retiro
-            <input type="datetime-local" formControlName="pickupDeadline" />
-            <span class="error" *ngIf="showError('pickupDeadline')">Seleccione una fecha válida.</span>
-          </label>
-        </div>
+        <legend>Notas</legend>
         <label>
           Notas
           <textarea rows="3" formControlName="notes"></textarea>
@@ -313,6 +326,7 @@ interface ProductOption {
 export class AdminReservationCreateComponent {
   private readonly reservationsApi = inject(ReservationsApi);
   private readonly customersApi = inject(CustomersApi);
+  private readonly productsApi = inject(ProductsApi);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -323,24 +337,9 @@ export class AdminReservationCreateComponent {
   readonly customers = signal<CustomerViewDTO[]>([]);
   readonly customersLoading = signal(false);
   readonly customersError = signal<string | null>(null);
-
-  readonly productCatalog: ProductOption[] = [
-    {
-      id: '11111111-1111-1111-1111-111111111111',
-      title: 'Producto clásico',
-      unitPrice: 49.99
-    },
-    {
-      id: '22222222-2222-2222-2222-222222222222',
-      title: 'Producto premium',
-      unitPrice: 89.99
-    },
-    {
-      id: '33333333-3333-3333-3333-333333333333',
-      title: 'Accesorio destacado',
-      unitPrice: 19.99
-    }
-  ];
+  readonly productOptions = signal<ProductOption[]>([]);
+  readonly productsLoading = signal(false);
+  readonly productsError = signal<string | null>(null);
 
   readonly reservationForm = this.fb.nonNullable.group({
     customerMode: this.fb.nonNullable.control<'existing' | 'new'>('existing'),
@@ -352,7 +351,6 @@ export class AdminReservationCreateComponent {
       email: ['', []],
       phone: ['', []]
     }),
-    pickupDeadline: ['', [Validators.required]],
     notes: ['']
   });
 
@@ -371,6 +369,7 @@ export class AdminReservationCreateComponent {
       .subscribe((mode) => this.updateCustomerValidators(mode));
     this.updateCustomerValidators(this.reservationForm.controls.customerMode.value);
     this.loadCustomers();
+    this.loadProducts();
   }
 
   addItem(): void {
@@ -379,8 +378,9 @@ export class AdminReservationCreateComponent {
       return;
     }
     const { productId, quantity } = this.itemForm.getRawValue();
-    const product = this.productCatalog.find((option) => option.id === productId);
+    const product = this.productOptions().find((option) => option.id === productId);
     if (!product) {
+      this.toast.error('Seleccione un producto válido.');
       return;
     }
     const draft: ReservationItemDraft = {
@@ -439,23 +439,19 @@ export class AdminReservationCreateComponent {
     this.loadCustomers();
   }
 
+  refreshProducts(): void {
+    this.loadProducts();
+  }
+
   showError(controlPath: string): boolean {
     const control = this.getControl(controlPath);
     return !!control && control.invalid && (control.touched || control.dirty);
   }
 
   private buildRequest(): ReservationCreateRequest | null {
-    const { customerMode, customerId, customerData, pickupDeadline, notes } =
-      this.reservationForm.getRawValue();
-
-    const pickupDeadlineIso = pickupDeadline ? new Date(pickupDeadline).toISOString() : '';
-    if (!pickupDeadlineIso) {
-      this.toast.error('Seleccione una fecha de retiro válida.');
-      return null;
-    }
+    const { customerMode, customerId, customerData, notes } = this.reservationForm.getRawValue();
     const payload: ReservationCreateRequest = {
       items: this.items().map((item) => ({ productId: item.productId, quantity: item.quantity })),
-      pickupDeadline: pickupDeadlineIso,
       notes: notes?.trim() ? notes.trim() : undefined
     };
 
@@ -572,6 +568,35 @@ export class AdminReservationCreateComponent {
         error: () => {
           this.customersError.set('No se pudieron cargar los clientes.');
           this.toast.error('No se pudieron cargar los clientes.');
+        }
+      });
+  }
+
+  private loadProducts(): void {
+    this.productsLoading.set(true);
+    this.productsError.set(null);
+    this.productsApi
+      .list({ page: 1, pageSize: 100, active: true })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.productsLoading.set(false))
+      )
+      .subscribe({
+        next: (page) => {
+          const options = (page.items ?? []).map((product) => ({
+            id: product.id,
+            title: product.title,
+            unitPrice: product.price
+          }));
+          this.productOptions.set(options);
+          const selectedProductId = this.itemForm.controls.productId.value;
+          if (selectedProductId && !options.some((option) => option.id === selectedProductId)) {
+            this.itemForm.controls.productId.setValue('', { emitEvent: false });
+          }
+        },
+        error: () => {
+          this.productsError.set('No se pudieron cargar los productos.');
+          this.toast.error('No se pudieron cargar los productos.');
         }
       });
   }

@@ -14,7 +14,7 @@ export interface Reservation {
   code: string;
   status: ReservationStatus;
   reservationDate: string;
-  pickupDeadline: string;
+  pickupDeadline?: string;
   totalAmount: number;
   notes?: string;
   customerId: string;
@@ -40,7 +40,6 @@ export interface ReservationCreateRequest {
   customerId?: string;
   customerData?: ReservationCustomerData;
   items: ReservationCreateItem[];
-  pickupDeadline: string;
   notes?: string;
 }
 
