@@ -17,17 +17,17 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   template: `
     <section class="page-header">
       <h1>Clientes</h1>
-      <a routerLink="/admin/customers/new" class="btn">New customer</a>
+      <a routerLink="/admin/customers/new" class="btn">Nuevo Cliente</a>
     </section>
 
     <form class="filters" [formGroup]="filterForm" (ngSubmit)="applyFilters(true)">
       <label>
-        Search
-        <input type="text" formControlName="search" placeholder="Name, email or DNI" />
+        Buscar
+        <input type="text" formControlName="search" placeholder="Nombre, email o DNI" />
       </label>
 
       <label>
-        Last name initial
+        Apellido Inicial
         <select formControlName="initial" (change)="applyFilters(true)">
           <option value="all">All</option>
           <option *ngFor="let letter of initials" [value]="letter">{{ letter }}</option>
@@ -36,15 +36,15 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       </label>
 
       <label>
-        Order by updatedAt
+        Ordenar por
         <select formControlName="sort" (change)="applyFilters(false)">
-          <option value="desc">Newest first</option>
-          <option value="asc">Oldest first</option>
+          <option value="desc">Nuevo</option>
+          <option value="asc">Último</option>
         </select>
       </label>
 
       <div class="filter-actions">
-        <button type="submit">Apply</button>
+        <button type="submit">Confirmar</button>
         <button type="button" (click)="resetFilters()">Clear</button>
       </div>
     </form>
@@ -58,11 +58,11 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     <table *ngIf="!loading && !error && customers.length" class="data-table">
       <thead>
         <tr>
-          <th>Name</th>
+          <th>Nombre</th>
           <th>DNI</th>
           <th>Email</th>
-          <th>Phone</th>
-          <th>Updated</th>
+          <th>Celular</th>
+          <th>Actualizado</th>
           <th></th>
         </tr>
       </thead>
