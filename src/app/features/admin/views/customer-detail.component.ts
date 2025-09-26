@@ -24,10 +24,10 @@ const TIMEOUT_MS = 10000;
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
-    <a routerLink="/admin/customers">&larr; Back to customers</a>
+    <a routerLink="/admin/customers">&larr; Volver a clientes</a>
 
-    <h1 *ngIf="isCreate">New customer</h1>
-    <h1 *ngIf="!isCreate">Customer</h1>
+    <h1 *ngIf="isCreate">Nuevo cliente</h1>
+    <h1 *ngIf="!isCreate">Clientes</h1>
 
     <section *ngIf="loading" class="loading">Loading…</section>
 
@@ -49,14 +49,14 @@ const TIMEOUT_MS = 10000;
       novalidate
     >
       <label>
-        First name
+        Primer nombre
         <input type="text" formControlName="firstName" required />
         <span class="error" *ngIf="hasError('firstName', 'required')">Required field.</span>
         <span class="error" *ngIf="hasError('firstName', 'minlength')">Minimum 2 characters.</span>
       </label>
 
       <label>
-        Last name
+        Apellido
         <input type="text" formControlName="lastName" required />
         <span class="error" *ngIf="hasError('lastName', 'required')">Required field.</span>
         <span class="error" *ngIf="hasError('lastName', 'minlength')">Minimum 2 characters.</span>
@@ -69,7 +69,7 @@ const TIMEOUT_MS = 10000;
       </label>
 
       <label>
-        Phone
+        Celular
         <input type="tel" formControlName="phone" />
       </label>
 
@@ -81,15 +81,15 @@ const TIMEOUT_MS = 10000;
       </label>
 
       <label class="notes-field">
-        Notes
+        Notas
         <textarea formControlName="notes" rows="4"></textarea>
       </label>
 
       <div class="form-actions">
         <button type="submit" [disabled]="form.invalid || saving">
-          {{ saving ? 'Saving…' : 'Save' }}
+          {{ saving ? 'Saving…' : 'Guardar' }}
         </button>
-        <button type="button" (click)="cancelEdit()" [disabled]="saving">Cancel</button>
+        <button type="button" (click)="cancelEdit()" [disabled]="saving">Cancelar</button>
       </div>
     </form>
 

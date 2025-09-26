@@ -29,7 +29,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       <label>
         Apellido Inicial
         <select formControlName="initial" (change)="applyFilters(true)">
-          <option value="all">All</option>
+          <option value="all">Todos</option>
           <option *ngFor="let letter of initials" [value]="letter">{{ letter }}</option>
           <option value="other">#</option>
         </select>
@@ -45,7 +45,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
       <div class="filter-actions">
         <button type="submit">Confirmar</button>
-        <button type="button" (click)="resetFilters()">Clear</button>
+        <button type="button" (click)="resetFilters()">Eliminar</button>
       </div>
     </form>
 
@@ -73,7 +73,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
           <td>{{ customer.email || '—' }}</td>
           <td>{{ customer.phone || '—' }}</td>
           <td>{{ customer.updatedAt | date: 'short' }}</td>
-          <td><a [routerLink]="['/admin/customers', customer.id]">View</a></td>
+          <td><a [routerLink]="['/admin/customers', customer.id]">Ver</a></td>
         </tr>
       </tbody>
     </table>
