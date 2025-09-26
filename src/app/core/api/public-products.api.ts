@@ -22,6 +22,7 @@ export class PublicProductsApi {
     }
     return this.http
       .get<PublicProductView[]>(this.resource, { params: httpParams })
+
       .pipe(timeout(this.requestTimeoutMs));
   }
 
