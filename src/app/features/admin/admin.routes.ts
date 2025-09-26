@@ -64,6 +64,14 @@ export const adminRoutes: Routes = [
         loadComponent: () => import('./views/customers-list.component').then(m => m.AdminCustomersListComponent)
       },
       {
+        path: 'customers/new',
+        loadComponent: () => import('./views/customer-detail.component').then(m => m.AdminCustomerDetailComponent)
+      },
+      {
+        path: 'customers/:id/edit',
+        loadComponent: () => import('./views/customer-detail.component').then(m => m.AdminCustomerDetailComponent)
+      },
+      {
         path: 'customers/:id',
         loadComponent: () => import('./views/customer-detail.component').then(m => m.AdminCustomerDetailComponent)
       },

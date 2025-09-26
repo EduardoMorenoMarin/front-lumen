@@ -6,9 +6,10 @@ export interface CustomerDTO {
   id: string;
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
   dni: string; // Documento Nacional de Identidad
+  notes: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
@@ -20,21 +21,36 @@ export interface CustomerDTO {
 export interface CustomerCreateDTO {
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
   dni: string;
+  notes: string;
 }
 
 /**
- * Update customer request.
+ * Replace customer request.
  * Endpoint: PUT /api/v1/customers/:id
  */
-export interface CustomerUpdateDTO {
+export interface CustomerPutDTO {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dni: string;
+  notes: string;
+}
+
+/**
+ * Partial update customer request.
+ * Endpoint: PATCH /api/v1/customers/:id
+ */
+export interface CustomerPatchDTO {
   firstName?: string;
   lastName?: string;
   email?: string;
   phone?: string;
   dni?: string;
+  notes?: string;
 }
 
 /**
@@ -42,5 +58,4 @@ export interface CustomerUpdateDTO {
  * Endpoint: GET /api/v1/customers, GET /api/v1/customers/:id
  */
 export interface CustomerViewDTO extends CustomerDTO {}
-
 
