@@ -1,13 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { PublicProductsApi, PublicReservationsApi } from '../../../core/api';
-import {
-  PublicProductView,
-  PublicReservationCreateRequest,
-  PublicReservationCreatedResponse
-} from '../../../core/models';
+import { PublicProductView, PublicReservationCreateRequest } from '../../../core/models';
 
 @Component({
   selector: 'app-reserve',
@@ -17,16 +13,17 @@ import {
     <section class="d-flex flex-column gap-4">
       <header class="bg-white shadow-sm rounded-4 p-4 border">
         <h1 class="h3 mb-2">Reserva con LIBRERIA LUMEN</h1>
-        <p class="text-muted mb-0">
-          Completa tus datos y selecciona un producto para apartarlo. Antes de enviar, revisa el cuerpo
-          JSON para asegurarte de que coincide exactamente con el formato requerido por la API pública.
-        </p>
+        <p class="text-muted mb-0">Completa tus datos y selecciona un producto para enviar la solicitud.</p>
       </header>
 
       <div class="row g-4">
         <div class="col-12 col-xl-8">
           <form class="card shadow-sm border-0" [formGroup]="form" (ngSubmit)="submit()" novalidate>
             <div class="card-body p-4">
+              <div class="alert alert-success" role="status" *ngIf="successMessage()">
+                {{ successMessage() }}
+              </div>
+
               <fieldset class="border-0 p-0" [disabled]="loading()">
                 <div class="row g-4">
                   <div class="col-12">
@@ -140,10 +137,7 @@ import {
                     >
                       <option value="" disabled>Selecciona un producto</option>
                       <option *ngFor="let product of products(); trackBy: trackByProduct" [value]="product.id">
-                        {{ product.name }}
-                        <ng-container *ngIf="product.availableStock !== undefined">
-                          ({{ product.availableStock }} disponibles)
-                        </ng-container>
+                        {{ product.title || product.name || 'Sin título' }}
                       </option>
                     </select>
                     <div class="invalid-feedback" *ngIf="hasError('productId', 'required')">
@@ -226,40 +220,13 @@ import {
         </div>
 
         <div class="col-12 col-xl-4">
-          <div class="d-flex flex-column gap-3">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-body d-flex flex-column gap-3">
-                <h2 class="h5 mb-0">Confirmación de reserva</h2>
-                <p class="text-muted mb-0">
-                  Recibirás un correo con el código y la fecha límite una vez confirmada la reserva.
-                </p>
-
-                <div *ngIf="confirmation() as result; else pending">
-                  <div class="alert alert-success mb-0" role="status">
-                    <h3 class="h6 fw-semibold">Reserva generada</h3>
-                    <p class="mb-1"><strong>Código:</strong> {{ result.code }}</p>
-                    <p class="mb-1"><strong>ID interno:</strong> {{ result.reservationId }}</p>
-                    <p class="mb-0" *ngIf="result.expiresAt">
-                      <strong>Vence:</strong> {{ result.expiresAt | date: 'longDate' }}
-                    </p>
-                  </div>
-                </div>
-
-                <ng-template #pending>
-                  <p class="text-muted mb-0">Completa el formulario para generar el código de retiro.</p>
-                </ng-template>
-              </div>
-            </div>
-
-            <div class="card shadow-sm border-0">
-              <div class="card-body d-flex flex-column gap-3">
-                <h2 class="h6 text-uppercase text-muted mb-0">JSON a enviar</h2>
-                <p class="text-muted mb-0">
-                  Verifica cada campo antes de enviar. Este es el cuerpo exacto que se enviará a
-                  <code>POST /public/reservations</code>.
-                </p>
-                <pre class="bg-dark text-white rounded-3 p-3 mb-0 small"><code>{{ requestPreview() }}</code></pre>
-              </div>
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex flex-column gap-3">
+              <h2 class="h5 mb-0">¿Qué sigue?</h2>
+              <p class="text-muted mb-0">
+                Nuestro equipo revisará la información y te contactará para confirmar la disponibilidad y coordinar la entrega.
+              </p>
+              <p class="text-muted mb-0">Si tienes dudas adicionales, puedes dejarlas en el campo de observaciones.</p>
             </div>
           </div>
         </div>
@@ -294,30 +261,7 @@ export class ReserveComponent {
   readonly loading = signal(false);
   readonly error = signal('');
   readonly products = signal<PublicProductView[]>([]);
-  readonly confirmation = signal<PublicReservationCreatedResponse | null>(null);
-
-  readonly requestPreview = computed(() => {
-    const raw = this.form.getRawValue();
-    const payload = {
-      customerData: {
-        firstName: raw.firstName || '',
-        lastName: raw.lastName || '',
-        dni: raw.dni || '',
-        email: raw.email || '',
-        phone: raw.phone || ''
-      },
-      items: [
-        {
-          productId: raw.productId || '',
-          quantity: raw.quantity ?? 1
-        }
-      ],
-      pickupDeadline: raw.pickupDeadline ? this.toIsoString(raw.pickupDeadline) : '',
-      ...(raw.notes ? { notes: raw.notes } : {})
-    } satisfies PublicReservationCreateRequest & { notes?: string };
-
-    return JSON.stringify(payload, null, 2);
-  });
+  readonly successMessage = signal('');
 
   readonly pickupDeadlineMinValue = this.toInputLocalValue(new Date());
 
@@ -358,14 +302,14 @@ export class ReserveComponent {
 
     this.loading.set(true);
     this.error.set('');
-    this.confirmation.set(null);
+    this.successMessage.set('');
 
     this.publicReservationsApi
       .create(request)
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: (response) => {
-          this.confirmation.set(response);
+        next: () => {
+          this.successMessage.set('Reserva enviada correctamente. Te contactaremos con la confirmación.');
           this.form.reset({
             firstName: '',
             lastName: '',
@@ -379,6 +323,7 @@ export class ReserveComponent {
           });
         },
         error: () => {
+          this.successMessage.set('');
           this.error.set('No se pudo crear la reserva. Intenta nuevamente.');
         }
       });
@@ -393,11 +338,11 @@ export class ReserveComponent {
     this.error.set('');
 
     this.publicProductsApi
-      .list({ page: 1, pageSize: 50 })
+      .list()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (response) => {
-          this.products.set(response.items);
+          this.products.set(response);
         },
         error: () => {
           this.error.set('No se pudieron cargar los productos.');
