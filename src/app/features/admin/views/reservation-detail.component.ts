@@ -68,6 +68,11 @@ import { ToastService } from '../../../shared/services/toast.service';
         color: #166534;
       }
 
+      .status-badge.CONFIRMED {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
       .status-badge.CANCELED {
         background: #fee2e2;
         color: #991b1b;
@@ -122,6 +127,11 @@ import { ToastService } from '../../../shared/services/toast.service';
 
       .actions button.primary {
         background: #2563eb;
+        color: #fff;
+      }
+
+      .actions button.secondary {
+        background: #065f46;
         color: #fff;
       }
 
@@ -238,6 +248,14 @@ import { ToastService } from '../../../shared/services/toast.service';
         </button>
         <button
           type="button"
+          class="secondary"
+          (click)="confirmReservation()"
+          [disabled]="!canConfirm() || actionLoading()"
+        >
+          Confirmar retiro
+        </button>
+        <button
+          type="button"
           class="danger"
           (click)="cancelReservation()"
           [disabled]="!canCancel() || actionLoading()"
@@ -268,7 +286,11 @@ export class AdminReservationDetailComponent {
   });
 
   readonly canAccept = computed(() => this.reservation()?.status === 'PENDING');
-  readonly canCancel = computed(() => this.reservation()?.status !== 'CANCELED');
+  readonly canConfirm = computed(() => this.reservation()?.status === 'ACCEPTED');
+  readonly canCancel = computed(() => {
+    const status = this.reservation()?.status;
+    return status !== 'CANCELED' && status !== 'CONFIRMED';
+  });
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -285,6 +307,8 @@ export class AdminReservationDetailComponent {
         return 'Pendiente';
       case 'ACCEPTED':
         return 'Aceptada';
+      case 'CONFIRMED':
+        return 'Retirada';
       case 'CANCELED':
         return 'Cancelada';
       default:
@@ -315,6 +339,33 @@ export class AdminReservationDetailComponent {
       });
   }
 
+  confirmReservation(): void {
+    const reservation = this.reservation();
+    if (!reservation || !this.canConfirm()) {
+      return;
+    }
+    if (!window.confirm('¿Confirmar que el cliente retiró la reserva?')) {
+      return;
+    }
+    const createSale = window.confirm('¿Deseas crear la venta al confirmar la reserva?');
+    this.actionLoading.set(true);
+    this.reservationsApi
+      .confirm(reservation.id, { createSale })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.actionLoading.set(false))
+      )
+      .subscribe({
+        next: (updated) => {
+          this.reservation.set(updated);
+          this.toast.success('Reserva confirmada correctamente.');
+        },
+        error: () => {
+          this.toast.error('No fue posible confirmar la reserva.');
+        }
+      });
+  }
+
   cancelReservation(): void {
     const reservation = this.reservation();
     if (!reservation || !this.canCancel()) {
@@ -323,9 +374,18 @@ export class AdminReservationDetailComponent {
     if (!window.confirm('¿Deseas cancelar esta reserva?')) {
       return;
     }
+    const reason = window.prompt('Motivo de cancelación:', '');
+    if (reason === null) {
+      return;
+    }
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      this.toast.error('Debe indicar un motivo de cancelación.');
+      return;
+    }
     this.actionLoading.set(true);
     this.reservationsApi
-      .cancel(reservation.id)
+      .cancel(reservation.id, { reason: trimmedReason })
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.actionLoading.set(false))

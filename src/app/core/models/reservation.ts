@@ -1,4 +1,4 @@
-export type ReservationStatus = 'PENDING' | 'ACCEPTED' | 'CANCELED';
+export type ReservationStatus = 'PENDING' | 'ACCEPTED' | 'CONFIRMED' | 'CANCELED';
 
 export interface ReservationItem {
   id: string;
@@ -47,6 +47,14 @@ export interface ReservationCreateRequest {
 export interface ReservationCreateItem {
   productId: string;
   quantity: number;
+}
+
+export interface ReservationConfirmRequest {
+  createSale: boolean;
+}
+
+export interface ReservationCancelRequest {
+  reason: string;
 }
 
 export type ReservationListResponse = Reservation[];
