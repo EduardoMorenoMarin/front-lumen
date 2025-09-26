@@ -39,7 +39,7 @@ import { ProductViewDTO } from '../../../core/models/product';
         </div>
         <div>
           <dt>Última actualización</dt>
-          <dd>{{ stockInfo()!.updatedAt | date: 'short' }}</dd>
+          <dd>{{ stockInfo()!.adjustedAt | date: 'short' }}</dd>
         </div>
       </dl>
     </section>
@@ -74,16 +74,12 @@ import { ProductViewDTO } from '../../../core/models/product';
 
       <dl *ngIf="lastAdjustment()" class="stock-summary">
         <div>
-          <dt>Último cambio</dt>
-          <dd>{{ lastAdjustment()!.change }}</dd>
+          <dt>Stock resultante</dt>
+          <dd>{{ lastAdjustment()!.stock }}</dd>
         </div>
         <div>
-          <dt>Registrado</dt>
-          <dd>{{ lastAdjustment()!.createdAt | date: 'short' }}</dd>
-        </div>
-        <div>
-          <dt>Por</dt>
-          <dd>{{ lastAdjustment()!.createdBy }}</dd>
+          <dt>Actualizado</dt>
+          <dd>{{ lastAdjustment()!.adjustedAt | date: 'short' }}</dd>
         </div>
       </dl>
     </section>
@@ -159,7 +155,7 @@ export class AdminInventoryComponent {
   onSubmitAdjustment(): void {
     if (this.adjustmentForm.invalid) return;
     const payload = this.prepareAdjustmentPayload();
-    if (!Number.isFinite(payload.change) || payload.change === 0) {
+    if (!Number.isFinite(payload.delta) || payload.delta === 0) {
       this.adjustmentErrorSignal.set('El cambio debe ser distinto de cero.');
       return;
     }
@@ -208,7 +204,7 @@ export class AdminInventoryComponent {
     const { productId, change, reason } = this.adjustmentForm.getRawValue();
     return {
       productId,
-      change: Number(change),
+      delta: Number(change),
       reason: reason?.trim() || undefined
     };
   }
