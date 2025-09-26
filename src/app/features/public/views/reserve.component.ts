@@ -14,8 +14,7 @@ import { PublicProductView, PublicReservationCreateRequest } from '../../../core
       <header class="bg-white shadow-sm rounded-4 p-4 border">
         <h1 class="h3 mb-2">Reserva con LIBRERIA LUMEN</h1>
         <p class="text-muted mb-0">
-          Completa tus datos y selecciona un producto para enviar la solicitud a
-          <code>POST /public/reservations</code>.
+          Completa tus datos y selecciona un producto para enviar la solicitud a la librería.
         </p>
       </header>
 
