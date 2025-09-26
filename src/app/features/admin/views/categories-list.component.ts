@@ -206,12 +206,12 @@ import { Category } from '../../../core/models/category-management';
   template: `
     <section class="page-header">
       <h1>Categorías</h1>
-      <a routerLink="/admin/categories/new" class="btn-primary">New category</a>
+      <a routerLink="/admin/categories/new" class="btn-primary">Nueva Categoría</a>
     </section>
 
     <form class="filters" [formGroup]="filters" (ngSubmit)="applyFilters()">
       <label>
-        Name
+        Nombre
         <input
           type="search"
           formControlName="search"
@@ -221,7 +221,7 @@ import { Category } from '../../../core/models/category-management';
       </label>
 
       <label>
-        Active
+        Activos
         <select formControlName="active">
           <option value="all">Todas</option>
           <option value="true">Activas</option>
@@ -256,7 +256,7 @@ import { Category } from '../../../core/models/category-management';
     <ng-container *ngIf="!loading && !error">
       <section *ngIf="!pagedCategories.length" class="state state--empty">
         <p>No hay categorías para mostrar.</p>
-        <a routerLink="/admin/categories/new" class="btn-primary">New category</a>
+        <a routerLink="/admin/categories/new" class="btn-primary">Nueva Categoría</a>
       </section>
 
       <ng-container *ngIf="pagedCategories.length">
