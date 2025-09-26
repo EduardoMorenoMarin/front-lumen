@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-
 import { Observable, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PublicCategoryView } from '../models/public';
@@ -14,7 +13,6 @@ export class PublicCategoriesApi {
 
   list(): Observable<PublicCategoryView[]> {
     return this.http.get<PublicCategoryView[]>(this.resource).pipe(timeout(this.requestTimeoutMs));
-
   }
 
   getById(id: string): Observable<PublicCategoryView> {

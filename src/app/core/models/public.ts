@@ -29,17 +29,6 @@ export interface PublicCategoryView {
 }
 
 /**
- * Detailed contact data required when creating a reservation from the public site.
- */
-export interface PublicReservationCustomerData {
-  firstName: string;
-  lastName: string;
-  dni: string;
-  email: string;
-  phone: string;
-}
-
-/**
  * Information about a product reserved from the public site.
  */
 export interface PublicReservationItem {
@@ -52,7 +41,11 @@ export interface PublicReservationItem {
  * Endpoint: POST /public/reservations
  */
 export interface PublicReservationCreateRequest {
-  customerData: PublicReservationCustomerData;
+  firstName: string;
+  lastName: string;
+  dni: string;
+  email: string;
+  phone: string;
   items: PublicReservationItem[];
   pickupDeadline: string; // ISO date string
   notes?: string;
