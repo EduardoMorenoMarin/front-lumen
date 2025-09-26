@@ -5,9 +5,9 @@
 export interface CategoryDTO {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
   description?: string;
-  isActive: boolean;
+  active: boolean;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
@@ -20,7 +20,7 @@ export interface CategoryCreateDTO {
   name: string;
   slug?: string;
   description?: string;
-  isActive?: boolean;
+  active?: boolean;
 }
 
 /**
@@ -31,7 +31,7 @@ export interface CategoryUpdateDTO {
   name?: string;
   slug?: string;
   description?: string;
-  isActive?: boolean;
+  active?: boolean;
 }
 
 /**

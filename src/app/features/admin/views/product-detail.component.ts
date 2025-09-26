@@ -200,10 +200,11 @@ export class AdminProductDetailComponent {
 
   private loadCategories(): void {
     this.categoriesApi
-      .list({ page: 1, pageSize: 100, sort: 'name,asc' })
+      .list({ page: 1, pageSize: 100, sort: 'name,asc', active: true })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: response => (this.categories = response.items)
+        next: response =>
+          (this.categories = (response.items ?? []).filter(category => category.active))
       });
   }
 
