@@ -19,10 +19,6 @@ export const publicRoutes: Routes = [
         loadComponent: () => import('./views/product-detail.component').then(m => m.ProductDetailComponent)
       },
       {
-        path: 'categories',
-        loadComponent: () => import('./views/categories-list.component').then(m => m.CategoriesListComponent)
-      },
-      {
         path: 'reserve',
         loadComponent: () => import('./views/reserve.component').then(m => m.ReserveComponent)
       }

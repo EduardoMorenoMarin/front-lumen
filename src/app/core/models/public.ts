@@ -4,15 +4,16 @@
  */
 export interface PublicProductView {
   id: string;
-  name: string;
+  title?: string;
+  name?: string;
   author?: string;
   description?: string;
   price: number;
-  currency: string;
+  currency?: string;
   categoryId: string;
   categoryName?: string;
   imageUrl?: string;
-  availableStock?: number;
+  stock?: number;
 }
 
 /**
@@ -22,20 +23,9 @@ export interface PublicProductView {
 export interface PublicCategoryView {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
   description?: string;
   productCount?: number;
-}
-
-/**
- * Detailed contact data required when creating a reservation from the public site.
- */
-export interface PublicReservationCustomerData {
-  firstName: string;
-  lastName: string;
-  dni: string;
-  email: string;
-  phone: string;
 }
 
 /**
@@ -51,7 +41,11 @@ export interface PublicReservationItem {
  * Endpoint: POST /public/reservations
  */
 export interface PublicReservationCreateRequest {
-  customerData: PublicReservationCustomerData;
+  firstName: string;
+  lastName: string;
+  dni: string;
+  email: string;
+  phone: string;
   items: PublicReservationItem[];
   pickupDeadline: string; // ISO date string
   notes?: string;
