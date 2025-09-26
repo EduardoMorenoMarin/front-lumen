@@ -1,41 +1,46 @@
 /**
- * Sale record.
- * Endpoint: GET/POST /api/v1/sales
- */
-export interface SaleDTO {
-  id: string;
-  reservationId?: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-    currency: string;
-  }>;
-  total: number;
-  currency: string;
-  createdAt: string; // ISO date string
-  createdBy: string; // userId
-}
-
-/**
  * Create sale request.
  * Endpoint: POST /api/v1/sales
  */
 export interface SaleCreateDTO {
-  reservationId?: string;
   items: Array<{
     productId: string;
     quantity: number;
     unitPrice: number;
-    currency: string;
   }>;
+  paymentMethod: string;
+  customerId: string;
+  notes?: string;
 }
 
 /**
  * Sale view (detailed).
  * Endpoint: GET /api/v1/sales/:id
  */
-export interface SaleViewDTO extends SaleDTO {}
+export interface SaleViewDTO {
+  id: string;
+  status: string;
+  saleDate: string;
+  totalAmount: number;
+  taxAmount: number;
+  discountAmount: number;
+  notes: string | null;
+  customerId: string;
+  customerFirstName: string;
+  customerLastName: string;
+  cashierId: string;
+  cashierEmail: string;
+  items: Array<{
+    id: string;
+    productId: string;
+    productTitle: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /**
  * Daily sales totals for reporting.

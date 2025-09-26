@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { SaleCreateDTO, SaleDTO, SaleViewDTO } from '../models/sale';
+import { SaleCreateDTO, SaleViewDTO } from '../models/sale';
 
 @Injectable({ providedIn: 'root' })
 export class SalesApi {
@@ -18,10 +18,6 @@ export class SalesApi {
     return this.http.get<SaleViewDTO>(`${this.resource}/${encodeURIComponent(id)}`);
   }
 
-  listByDateRange(start: string, end: string): Observable<SaleDTO[]> {
-    const params = new HttpParams().set('start', start).set('end', end);
-    return this.http.get<SaleDTO[]>(this.resource, { params });
-  }
 }
 
 
