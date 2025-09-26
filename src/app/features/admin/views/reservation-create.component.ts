@@ -407,35 +407,72 @@ export class AdminReservationCreateComponent {
   }
 
   private buildRequest(): ReservationCreateRequest | null {
-
     const { customerMode, customerId, customerData, notes } = this.reservationForm.getRawValue();
-    const payload: ReservationCreateRequest = {
-      items: this.items().map((item) => ({ productId: item.productId, quantity: item.quantity })),
-      notes: notes?.trim() ? notes.trim() : undefined
-    };
 
-    const sanitizedPhone = this.sanitizePhone(customer.phone);
-    const phone = sanitizedPhone || customer.phone?.trim() || '';
-    if (!phone) {
-      this.toast.error('El cliente seleccionado no tiene teléfono configurado.');
+    const items = this.items().map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity
+    }));
+
+    const trimmedNotes = notes?.trim();
+
+    if (customerMode === 'existing') {
+      const trimmedId = customerId?.trim();
+      if (!trimmedId) {
+        this.toast.error('Selecciona un cliente válido.');
+        return null;
+      }
+
+      const customer = this.customers().find((option) => option.id === trimmedId);
+      if (!customer) {
+        this.toast.error('Selecciona un cliente válido.');
+        return null;
+      }
+
+      const sanitizedPhone = this.sanitizePhone(customer.phone ?? '');
+      const phone = sanitizedPhone || customer.phone?.trim() || '';
+      if (!phone) {
+        this.toast.error('El cliente seleccionado no tiene teléfono configurado.');
+        return null;
+      }
+
+      return {
+        customerId: trimmedId,
+        customerData: {
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          dni: customer.dni,
+          email: customer.email,
+          phone
+        },
+        items,
+        notes: trimmedNotes ? trimmedNotes : undefined
+      };
+    }
+
+    const firstName = customerData?.firstName?.trim() ?? '';
+    const lastName = customerData?.lastName?.trim() ?? '';
+    const dni = customerData?.dni?.trim() ?? '';
+    const email = customerData?.email?.trim() ?? '';
+    const sanitizedPhone = this.sanitizePhone(customerData?.phone ?? '');
+    const phone = sanitizedPhone || customerData?.phone?.trim() || '';
+
+    if (!firstName || !lastName || !phone) {
+      this.toast.error('Completa los datos del nuevo cliente.');
       return null;
     }
 
-    const payload: ReservationCreateRequest = {
-      customerId: trimmedId,
+    return {
       customerData: {
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        dni: customer.dni,
-        email: customer.email,
+        firstName,
+        lastName,
+        dni,
+        email,
         phone
       },
-      items: this.items().map((item) => ({ productId: item.productId, quantity: item.quantity })),
-      pickupDeadline: this.buildPickupDeadline(),
-      notes: notes?.trim() ? notes.trim() : undefined
+      items,
+      notes: trimmedNotes ? trimmedNotes : undefined
     };
-
-    return payload;
   }
 
   private sanitizePhone(value: string): string {
