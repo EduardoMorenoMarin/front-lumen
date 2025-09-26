@@ -171,74 +171,36 @@ interface ProductOption {
     <form [formGroup]="reservationForm" (ngSubmit)="submit()">
       <fieldset>
         <legend>Cliente</legend>
-        <label>
-          Modo de selección
-          <select formControlName="customerMode">
-            <option value="existing">Cliente existente</option>
-            <option value="new">Agregar cliente rápido</option>
-          </select>
-        </label>
-
-        <ng-container [ngSwitch]="reservationForm.controls.customerMode.value">
-          <div *ngSwitchCase="'existing'" class="existing-customer">
-            <label>
-              Cliente
-              <select formControlName="customerId">
-                <option value="">Selecciona un cliente</option>
-                <option *ngFor="let customer of customers()" [value]="customer.id">
-                  {{ getCustomerLabel(customer) }}
-                </option>
-              </select>
-              <span class="error" *ngIf="showError('customerId')">
-                Selecciona un cliente válido.
-              </span>
-            </label>
-            <p class="helper" *ngIf="customersLoading()">Cargando clientes…</p>
-            <p
-              class="helper"
-              *ngIf="!customersLoading() && !customers().length && !customersError()"
+        <div class="existing-customer">
+          <label>
+            Cliente
+            <select
+              formControlName="customerId"
+              [disabled]="customersLoading() && !customers().length"
             >
-              No hay clientes registrados. Usa “Agregar cliente rápido”.
-            </p>
-            <button
-              type="button"
-              class="link-button"
-              (click)="refreshCustomers()"
-              [disabled]="customersLoading()"
-            >
-              Actualizar lista
-            </button>
-            <p class="error" *ngIf="customersError()">{{ customersError() }}</p>
-          </div>
-
-          <div *ngSwitchCase="'new'" class="inline" formGroupName="customerData">
-            <label>
-              Nombre
-              <input formControlName="firstName" />
-              <span class="error" *ngIf="showError('customerData.firstName')">Ingrese el nombre.</span>
-            </label>
-            <label>
-              Apellido
-              <input formControlName="lastName" />
-              <span class="error" *ngIf="showError('customerData.lastName')">Ingrese el apellido.</span>
-            </label>
-            <label>
-              DNI
-              <input formControlName="dni" placeholder="8 dígitos" />
-              <span class="error" *ngIf="showError('customerData.dni')">Ingrese un DNI válido.</span>
-            </label>
-            <label>
-              Email
-              <input formControlName="email" type="email" />
-              <span class="error" *ngIf="showError('customerData.email')">Ingrese un email válido.</span>
-            </label>
-            <label>
-              Teléfono
-              <input formControlName="phone" />
-              <span class="error" *ngIf="showError('customerData.phone')">Ingrese un teléfono.</span>
-            </label>
-          </div>
-        </ng-container>
+              <option value="">Selecciona un cliente</option>
+              <option *ngFor="let customer of customers()" [value]="customer.id">
+                {{ getCustomerLabel(customer) }}
+              </option>
+            </select>
+            <span class="error" *ngIf="showError('customerId')">
+              Selecciona un cliente válido.
+            </span>
+          </label>
+          <p class="helper" *ngIf="customersLoading()">Cargando clientes…</p>
+          <p class="helper" *ngIf="!customersLoading() && !customers().length && !customersError()">
+            No hay clientes registrados.
+          </p>
+          <button
+            type="button"
+            class="link-button"
+            (click)="refreshCustomers()"
+            [disabled]="customersLoading()"
+          >
+            Actualizar lista
+          </button>
+          <p class="error" *ngIf="customersError()">{{ customersError() }}</p>
+        </div>
       </fieldset>
 
       <fieldset [formGroup]="itemForm">
@@ -364,10 +326,6 @@ export class AdminReservationCreateComponent {
   );
 
   constructor() {
-    this.reservationForm.controls.customerMode.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((mode) => this.updateCustomerValidators(mode));
-    this.updateCustomerValidators(this.reservationForm.controls.customerMode.value);
     this.loadCustomers();
     this.loadProducts();
   }
@@ -449,92 +407,35 @@ export class AdminReservationCreateComponent {
   }
 
   private buildRequest(): ReservationCreateRequest | null {
+
     const { customerMode, customerId, customerData, notes } = this.reservationForm.getRawValue();
     const payload: ReservationCreateRequest = {
       items: this.items().map((item) => ({ productId: item.productId, quantity: item.quantity })),
       notes: notes?.trim() ? notes.trim() : undefined
     };
 
-    if (customerMode === 'existing') {
-      const trimmedId = customerId?.trim() ?? '';
-      if (!trimmedId) {
-        this.toast.error('Debe seleccionar un cliente válido.');
-        return null;
-      }
-      const customer = this.customers().find((item) => item.id === trimmedId);
-      if (!customer) {
-        this.toast.error('Debe seleccionar un cliente válido.');
-        return null;
-      }
-      payload.customerId = trimmedId;
-      const sanitizedPhone = this.sanitizePhone(customer.phone);
-      payload.customerData = {
+    const sanitizedPhone = this.sanitizePhone(customer.phone);
+    const phone = sanitizedPhone || customer.phone?.trim() || '';
+    if (!phone) {
+      this.toast.error('El cliente seleccionado no tiene teléfono configurado.');
+      return null;
+    }
+
+    const payload: ReservationCreateRequest = {
+      customerId: trimmedId,
+      customerData: {
         firstName: customer.firstName,
         lastName: customer.lastName,
         dni: customer.dni,
         email: customer.email,
-        phone: sanitizedPhone
-      };
-    } else {
-      if (!customerData) {
-        return null;
-      }
-      const firstName = customerData.firstName!.trim();
-      const lastName = customerData.lastName!.trim();
-      const dni = customerData.dni!.trim();
-      const email = customerData.email!.trim();
-      const sanitizedPhone = this.sanitizePhone(customerData.phone ?? '');
-      if (!firstName || !lastName || !dni || !email || !sanitizedPhone) {
-        this.toast.error('Completa los datos del cliente.');
-        return null;
-      }
-      payload.customerData = {
-        firstName,
-        lastName,
-        dni,
-        email,
-        phone: sanitizedPhone
-      };
-    }
+        phone
+      },
+      items: this.items().map((item) => ({ productId: item.productId, quantity: item.quantity })),
+      pickupDeadline: this.buildPickupDeadline(),
+      notes: notes?.trim() ? notes.trim() : undefined
+    };
 
     return payload;
-  }
-
-  private updateCustomerValidators(mode: 'existing' | 'new'): void {
-    const customerIdControl = this.reservationForm.controls.customerId;
-    const customerDataGroup = this.reservationForm.controls.customerData;
-
-    if (mode === 'existing') {
-      customerIdControl.setValidators([
-        Validators.required,
-        Validators.pattern(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/)
-      ]);
-      customerIdControl.updateValueAndValidity({ emitEvent: false });
-      Object.values(customerDataGroup.controls).forEach((control) => {
-        control.clearValidators();
-        control.updateValueAndValidity({ emitEvent: false });
-      });
-      customerDataGroup.reset(
-        { firstName: '', lastName: '', dni: '', email: '', phone: '' },
-        { emitEvent: false }
-      );
-    } else {
-      customerIdControl.clearValidators();
-      customerIdControl.setValue('', { emitEvent: false });
-      customerIdControl.updateValueAndValidity({ emitEvent: false });
-      customerDataGroup.controls.firstName.setValidators([Validators.required]);
-      customerDataGroup.controls.lastName.setValidators([Validators.required]);
-      customerDataGroup.controls.dni.setValidators([
-        Validators.required,
-        Validators.pattern(/^\d{8}$/)
-      ]);
-      customerDataGroup.controls.email.setValidators([Validators.required, Validators.email]);
-      customerDataGroup.controls.phone.setValidators([Validators.required]);
-      Object.values(customerDataGroup.controls).forEach((control) =>
-        control.updateValueAndValidity({ emitEvent: false })
-      );
-    }
-    customerIdControl.updateValueAndValidity({ emitEvent: false });
   }
 
   private sanitizePhone(value: string): string {
@@ -543,6 +444,12 @@ export class AdminReservationCreateComponent {
 
   private getControl(path: string) {
     return this.reservationForm.get(path);
+  }
+
+  private buildPickupDeadline(): string {
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 7);
+    return deadline.toISOString();
   }
 
   private loadCustomers(): void {
@@ -560,9 +467,6 @@ export class AdminReservationCreateComponent {
           const selectedId = this.reservationForm.controls.customerId.value;
           if (selectedId && !customers.some((customer) => customer.id === selectedId)) {
             this.reservationForm.controls.customerId.setValue('', { emitEvent: false });
-          }
-          if (!customers.length && this.reservationForm.controls.customerMode.value === 'existing') {
-            this.reservationForm.controls.customerMode.setValue('new');
           }
         },
         error: () => {
