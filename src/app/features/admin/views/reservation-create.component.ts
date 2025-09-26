@@ -446,6 +446,7 @@ export class AdminReservationCreateComponent {
           phone
         },
         items,
+        pickupDeadline: this.buildPickupDeadline(),
         notes: trimmedNotes ? trimmedNotes : undefined
       };
     }
@@ -471,6 +472,7 @@ export class AdminReservationCreateComponent {
         phone
       },
       items,
+      pickupDeadline: this.buildPickupDeadline(),
       notes: trimmedNotes ? trimmedNotes : undefined
     };
   }

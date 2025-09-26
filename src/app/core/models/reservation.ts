@@ -40,6 +40,7 @@ export interface ReservationCreateRequest {
   customerId?: string;
   customerData?: ReservationCustomerData;
   items: ReservationCreateItem[];
+  pickupDeadline?: string;
   notes?: string;
 }
 
