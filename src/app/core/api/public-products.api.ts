@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { PageRequest, PageResponse } from '../models/pagination';
 import { PublicProductView } from '../models/public';
 
 @Injectable({ providedIn: 'root' })
@@ -10,8 +9,9 @@ export class PublicProductsApi {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl;
   private readonly resource = `${this.baseUrl}/public/products`;
+  private readonly requestTimeoutMs = 10000;
 
-  list(params?: PageRequest & { categoryId?: string }): Observable<PageResponse<PublicProductView>> {
+  list(params?: { search?: string; categoryId?: string }): Observable<PublicProductView[]> {
     let httpParams = new HttpParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -20,11 +20,15 @@ export class PublicProductsApi {
         }
       });
     }
-    return this.http.get<PageResponse<PublicProductView>>(this.resource, { params: httpParams });
+    return this.http
+      .get<PublicProductView[]>(this.resource, { params: httpParams })
+      .pipe(timeout(this.requestTimeoutMs));
   }
 
   getById(id: string): Observable<PublicProductView> {
-    return this.http.get<PublicProductView>(`${this.resource}/${encodeURIComponent(id)}`);
+    return this.http
+      .get<PublicProductView>(`${this.resource}/${encodeURIComponent(id)}`)
+      .pipe(timeout(this.requestTimeoutMs));
   }
 }
 

@@ -140,10 +140,7 @@ import {
                     >
                       <option value="" disabled>Selecciona un producto</option>
                       <option *ngFor="let product of products(); trackBy: trackByProduct" [value]="product.id">
-                        {{ product.name }}
-                        <ng-container *ngIf="product.availableStock !== undefined">
-                          ({{ product.availableStock }} disponibles)
-                        </ng-container>
+                        {{ product.title || product.name || 'Sin título' }}
                       </option>
                     </select>
                     <div class="invalid-feedback" *ngIf="hasError('productId', 'required')">
@@ -393,11 +390,11 @@ export class ReserveComponent {
     this.error.set('');
 
     this.publicProductsApi
-      .list({ page: 1, pageSize: 50 })
+      .list()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (response) => {
-          this.products.set(response.items);
+          this.products.set(response);
         },
         error: () => {
           this.error.set('No se pudieron cargar los productos.');

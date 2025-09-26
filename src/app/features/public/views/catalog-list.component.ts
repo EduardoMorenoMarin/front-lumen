@@ -14,8 +14,8 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
       <header class="bg-white shadow-sm rounded-4 p-4 border">
         <h1 class="h3 mb-3">Explora nuestro catálogo</h1>
         <p class="text-muted mb-4">
-          Consulta la disponibilidad en tiempo real sin necesidad de iniciar sesión. Puedes buscar por
-          título, filtrar por categoría o combinar ambos.
+          Revisa los productos disponibles y utiliza el filtro de categorías para ver los títulos
+          asociados a cada una.
         </p>
 
         <form class="row g-3 align-items-end" (ngSubmit)="onSearch()" role="search">
@@ -48,7 +48,7 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
         </form>
 
         <div class="mt-4">
-          <p class="fw-semibold mb-2">Categorías populares</p>
+          <p class="fw-semibold mb-2">Filtrar por categoría</p>
           <div class="d-flex flex-wrap gap-2">
             <button
               type="button"
@@ -100,9 +100,6 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
                   {{ selectedCategory.description }}
                 </p>
               </div>
-              <a class="btn btn-outline-primary btn-sm ms-lg-auto" [routerLink]="['/categories']">
-                Ver detalle de categorías
-              </a>
             </div>
           </div>
         </div>
@@ -125,7 +122,7 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
           <article class="card h-100 shadow-sm border-0">
             <div class="card-body d-flex flex-column">
               <div class="d-flex flex-column gap-1 mb-3">
-                <h2 class="h5 mb-0">{{ product.name }}</h2>
+                <h2 class="h5 mb-0">{{ product.title || product.name || 'Sin título' }}</h2>
                 <span class="text-primary fw-semibold" *ngIf="product.author">{{ product.author }}</span>
                 <span class="badge text-bg-secondary align-self-start" *ngIf="product.categoryName">
                   {{ product.categoryName }}
@@ -138,18 +135,8 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
 
               <ul class="list-unstyled small text-muted mb-3">
                 <li>
-                  <strong>Precio:</strong> {{ product.price | currency: product.currency }}
-                </li>
-                <li *ngIf="product.availableStock !== undefined">
-                  <strong>Stock disponible:</strong>
-                  <span
-                    [ngClass]="{
-                      'text-success': product.availableStock !== undefined && product.availableStock > 0,
-                      'text-danger': product.availableStock !== undefined && product.availableStock === 0
-                    }"
-                  >
-                    {{ product.availableStock }} unidades
-                  </span>
+                  <strong>Precio:</strong>
+                  {{ product.price | currency: (product.currency || 'MXN') }}
                 </li>
               </ul>
 
@@ -163,28 +150,6 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
         </div>
       </div>
 
-      <nav *ngIf="!loading && totalPages > 1" aria-label="Paginación de catálogo" class="d-flex justify-content-center">
-        <ul class="pagination pagination-rounded">
-          <li class="page-item" [class.disabled]="page <= 1">
-            <button class="page-link" type="button" (click)="changePage(-1)" [disabled]="page <= 1">
-              Anterior
-            </button>
-          </li>
-          <li class="page-item disabled">
-            <span class="page-link">Página {{ page }} de {{ totalPages }}</span>
-          </li>
-          <li class="page-item" [class.disabled]="page >= totalPages">
-            <button
-              class="page-link"
-              type="button"
-              (click)="changePage(1)"
-              [disabled]="page >= totalPages"
-            >
-              Siguiente
-            </button>
-          </li>
-        </ul>
-      </nav>
     </section>
   `
 })
@@ -194,11 +159,8 @@ export class CatalogListComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
+  allProducts: PublicProductView[] = [];
   products: PublicProductView[] = [];
-  page = 1;
-  pageSize = 12;
-  totalPages = 0;
-  totalItems = 0;
   search = '';
   loading = false;
   error = '';
@@ -212,7 +174,6 @@ export class CatalogListComponent {
     const params = this.route.snapshot.queryParamMap;
     const initialSearch = params.get('search');
     const initialCategory = params.get('categoryId');
-    const initialPage = Number(params.get('page') ?? 1);
 
     if (initialSearch) {
       this.search = initialSearch;
@@ -223,37 +184,21 @@ export class CatalogListComponent {
       this.fetchCategoryDetail(initialCategory);
     }
 
-    if (!Number.isNaN(initialPage) && initialPage > 1) {
-      this.page = initialPage;
-    }
-
     this.loadCategories();
     this.fetchProducts();
   }
 
   onSearch(): void {
-    this.page = 1;
     this.updateQueryParams();
-    this.fetchProducts();
+    this.applyFilters();
   }
 
   resetFilters(): void {
     this.search = '';
     this.selectedCategoryId = null;
     this.selectedCategory = null;
-    this.page = 1;
     this.updateQueryParams();
-    this.fetchProducts();
-  }
-
-  changePage(direction: number): void {
-    const target = this.page + direction;
-    if (target < 1 || (this.totalPages && target > this.totalPages)) {
-      return;
-    }
-    this.page = target;
-    this.updateQueryParams();
-    this.fetchProducts();
+    this.applyFilters();
   }
 
   selectCategory(categoryId: string | null): void {
@@ -270,9 +215,8 @@ export class CatalogListComponent {
       }
       this.fetchCategoryDetail(categoryId);
     }
-    this.page = 1;
     this.updateQueryParams();
-    this.fetchProducts();
+    this.applyFilters();
   }
 
   trackByProduct(_: number, item: PublicProductView): string {
@@ -286,9 +230,15 @@ export class CatalogListComponent {
   private loadCategories(): void {
     this.loadingCategories = true;
     this.categoriesError = '';
-    this.categoriesApi.list({ page: 1, pageSize: 100 }).subscribe({
+    this.categoriesApi.list().subscribe({
       next: response => {
-        this.categories = response.items;
+        this.categories = response;
+        if (this.selectedCategoryId) {
+          const match = this.categories.find(category => category.id === this.selectedCategoryId);
+          if (match) {
+            this.selectedCategory = match;
+          }
+        }
         this.loadingCategories = false;
       },
       error: () => {
@@ -309,6 +259,23 @@ export class CatalogListComponent {
     });
   }
 
+  private fetchProducts(): void {
+    this.loading = true;
+    this.error = '';
+
+    this.api.list().subscribe({
+      next: (response) => {
+        this.allProducts = response;
+        this.applyFilters();
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'No se pudieron cargar los productos.';
+        this.loading = false;
+      }
+    });
+  }
+
   private updateQueryParams(): void {
     const queryParams: Record<string, unknown> = {};
 
@@ -320,10 +287,6 @@ export class CatalogListComponent {
       queryParams['categoryId'] = this.selectedCategoryId;
     }
 
-    if (this.page > 1) {
-      queryParams['page'] = this.page;
-    }
-
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams,
@@ -331,36 +294,23 @@ export class CatalogListComponent {
     });
   }
 
-  private fetchProducts(): void {
-    this.loading = true;
-    this.error = '';
-
-    const params: Record<string, unknown> = {
-      page: this.page,
-      pageSize: this.pageSize
-    };
-
-    if (this.search.trim()) {
-      params['search'] = this.search.trim();
-    }
-
-    if (this.selectedCategoryId) {
-      params['categoryId'] = this.selectedCategoryId;
-    }
-
-    this.api.list(params).subscribe({
-      next: (response) => {
-        this.products = response.items;
-        this.page = response.page;
-        this.pageSize = response.pageSize;
-        this.totalItems = response.totalItems;
-        this.totalPages = response.totalPages;
-        this.loading = false;
-      },
-      error: () => {
-        this.error = 'No se pudieron cargar los productos.';
-        this.loading = false;
+  private applyFilters(): void {
+    const term = this.search.trim().toLowerCase();
+    this.products = this.allProducts.filter(product => {
+      const matchesCategory = !this.selectedCategoryId || product.categoryId === this.selectedCategoryId;
+      if (!matchesCategory) {
+        return false;
       }
+
+      if (!term) {
+        return true;
+      }
+
+      const title = product.title ?? product.name ?? '';
+      const author = product.author ?? '';
+      const description = product.description ?? '';
+      const combined = `${title} ${author} ${description}`.toLowerCase();
+      return combined.includes(term);
     });
   }
 }

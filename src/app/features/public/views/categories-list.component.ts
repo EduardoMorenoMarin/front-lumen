@@ -60,24 +60,6 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
             <p *ngIf="!loadingCategories && !categories.length" class="text-muted mb-0">
               No hay categorías registradas.
             </p>
-
-            <nav *ngIf="!loadingCategories && totalPages > 1" class="pt-2" aria-label="Paginación de categorías">
-              <ul class="pagination pagination-sm mb-0">
-                <li class="page-item" [class.disabled]="page <= 1">
-                  <button class="page-link" type="button" (click)="changePage(-1)" [disabled]="page <= 1">
-                    Anterior
-                  </button>
-                </li>
-                <li class="page-item disabled">
-                  <span class="page-link">Página {{ page }} de {{ totalPages }}</span>
-                </li>
-                <li class="page-item" [class.disabled]="page >= totalPages">
-                  <button class="page-link" type="button" (click)="changePage(1)" [disabled]="page >= totalPages">
-                    Siguiente
-                  </button>
-                </li>
-              </ul>
-            </nav>
           </div>
         </div>
 
@@ -140,14 +122,11 @@ import { PublicCategoryView, PublicProductView } from '../../../core/models';
                   <div class="row g-3" *ngIf="!loadingProducts && !productsError">
                     <div class="col-12 col-md-6" *ngFor="let product of categoryProducts; trackBy: trackByProduct">
                       <article class="border rounded-4 p-3 h-100 position-relative">
-                        <h4 class="h6 mb-1">{{ product.name }}</h4>
+                        <h4 class="h6 mb-1">{{ product.title || product.name || 'Sin título' }}</h4>
                         <p class="text-muted small mb-2" *ngIf="product.author">{{ product.author }}</p>
                         <p class="small text-truncate" *ngIf="product.description">{{ product.description }}</p>
                         <p class="fw-semibold mb-2">
-                          {{ product.price | currency: product.currency }}
-                          <span class="text-muted" *ngIf="product.availableStock !== undefined">
-                            · {{ product.availableStock }} en stock
-                          </span>
+                          {{ product.price | currency: (product.currency || 'MXN') }}
                         </p>
                         <a class="stretched-link" [routerLink]="['/product', product.id]">Ver detalle</a>
                       </article>
@@ -175,9 +154,6 @@ export class CategoriesListComponent {
   categories: PublicCategoryView[] = [];
   loadingCategories = false;
   categoriesError = '';
-  page = 1;
-  pageSize = 20;
-  totalPages = 0;
 
   selectedCategoryId: string | null = null;
   selectedCategory: PublicCategoryView | null = null;
@@ -189,16 +165,6 @@ export class CategoriesListComponent {
   productsError = '';
 
   constructor() {
-    this.fetchCategories();
-  }
-
-  changePage(direction: number): void {
-    const target = this.page + direction;
-    if (target < 1 || (this.totalPages && target > this.totalPages)) {
-      return;
-    }
-
-    this.page = target;
     this.fetchCategories();
   }
 
@@ -240,12 +206,9 @@ export class CategoriesListComponent {
     this.loadingCategories = true;
     this.categoriesError = '';
 
-    this.categoriesApi.list({ page: this.page, pageSize: this.pageSize }).subscribe({
+    this.categoriesApi.list().subscribe({
       next: (response) => {
-        this.categories = response.items;
-        this.page = response.page;
-        this.pageSize = response.pageSize;
-        this.totalPages = response.totalPages;
+        this.categories = response;
         this.loadingCategories = false;
 
         if (!this.selectedCategoryId && this.categories.length) {
@@ -277,9 +240,9 @@ export class CategoriesListComponent {
     this.loadingProducts = true;
     this.productsError = '';
 
-    this.productsApi.list({ page: 1, pageSize: 6, categoryId }).subscribe({
+    this.productsApi.list({ categoryId }).subscribe({
       next: (response) => {
-        this.categoryProducts = response.items;
+        this.categoryProducts = response.slice(0, 6);
         this.loadingProducts = false;
       },
       error: () => {

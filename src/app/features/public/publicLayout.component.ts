@@ -43,9 +43,6 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
               >
             </li>
             <li class="nav-item">
-              <a class="nav-link" routerLink="/categories" routerLinkActive="active">Categorías</a>
-            </li>
-            <li class="nav-item">
               <a class="nav-link" routerLink="/reserve" routerLinkActive="active">Reservar</a>
             </li>
             <li class="nav-item">

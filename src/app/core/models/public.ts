@@ -4,15 +4,16 @@
  */
 export interface PublicProductView {
   id: string;
-  name: string;
+  title?: string;
+  name?: string;
   author?: string;
   description?: string;
   price: number;
-  currency: string;
+  currency?: string;
   categoryId: string;
   categoryName?: string;
   imageUrl?: string;
-  availableStock?: number;
+  stock?: number;
 }
 
 /**
@@ -22,7 +23,7 @@ export interface PublicProductView {
 export interface PublicCategoryView {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
   description?: string;
   productCount?: number;
 }
