@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:8099'
+  apiBaseUrl: 'https://lumen-api-production-5ec3.up.railway.app'
 };
 
 
