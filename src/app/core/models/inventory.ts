@@ -3,12 +3,9 @@
  * Endpoint: POST /api/v1/inventory/adjust
  */
 export interface InventoryAdjustmentResponse {
-  id: string;
   productId: string;
-  change: number; // positive or negative
-  reason?: string;
-  createdBy: string; // userId
-  createdAt: string; // ISO date string
+  stock: number;
+  adjustedAt: string; // ISO date string
 }
 
 /**
@@ -17,7 +14,7 @@ export interface InventoryAdjustmentResponse {
  */
 export interface InventoryAdjustmentRequest {
   productId: string;
-  change: number;
+  delta: number;
   reason?: string;
 }
 
@@ -28,7 +25,7 @@ export interface InventoryAdjustmentRequest {
 export interface ProductStockResponse {
   productId: string;
   stock: number;
-  updatedAt: string; // ISO date string
+  adjustedAt: string; // ISO date string
 }
 
 
