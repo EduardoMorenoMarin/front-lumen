@@ -221,28 +221,6 @@ import { PublicProductView, PublicReservationCreateRequest } from '../../../core
             {{ error() }}
           </div>
         </div>
-
-        <div class="col-12 col-xl-4">
-          <div class="card shadow-sm border-0 h-100">
-            <div class="card-body d-flex flex-column gap-3">
-              <h2 class="h5 mb-0">Detalles del endpoint</h2>
-              <p class="text-muted mb-0">
-                La solicitud se envía a <code>POST /public/reservations</code> con los siguientes campos:
-              </p>
-              <ul class="list-unstyled small mb-0">
-                <li><strong>firstName</strong>: Nombre del solicitante.</li>
-                <li><strong>lastName</strong>: Apellido del solicitante.</li>
-                <li><strong>dni</strong>: Documento de identidad.</li>
-                <li><strong>email</strong>: Correo de contacto.</li>
-                <li><strong>phone</strong>: Teléfono de contacto.</li>
-                <li><strong>items[0].productId</strong>: Producto a reservar.</li>
-                <li><strong>items[0].quantity</strong>: Cantidad solicitada.</li>
-                <li><strong>pickupDeadline</strong>: Fecha y hora límite de recojo.</li>
-                <li><strong>notes</strong>: Observaciones adicionales (opcional).</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
 
       <ng-template #loadingTpl>
@@ -296,11 +274,13 @@ export class ReserveComponent {
     const raw = this.form.getRawValue();
 
     const request: PublicReservationCreateRequest = {
-      firstName: raw.firstName,
-      lastName: raw.lastName,
-      dni: raw.dni,
-      email: raw.email,
-      phone: raw.phone,
+      customerData: {
+        firstName: raw.firstName,
+        lastName: raw.lastName,
+        dni: raw.dni,
+        email: raw.email,
+        phone: raw.phone
+      },
       items: [
         {
           productId: raw.productId,
@@ -320,7 +300,7 @@ export class ReserveComponent {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: () => {
-          this.successMessage.set('Reserva enviada correctamente. Te contactaremos con la confirmación.');
+          this.successMessage.set('Reserva enviada correctamente. Te contactaremos a la brevedad.');
           this.form.reset({
             firstName: '',
             lastName: '',

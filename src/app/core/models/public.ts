@@ -36,16 +36,20 @@ export interface PublicReservationItem {
   quantity: number;
 }
 
-/**
- * Payload to create a reservation from the public site.
- * Endpoint: POST /public/reservations
- */
-export interface PublicReservationCreateRequest {
+export interface PublicReservationCustomerData {
   firstName: string;
   lastName: string;
   dni: string;
   email: string;
   phone: string;
+}
+
+/**
+ * Payload to create a reservation from the public site.
+ * Endpoint: POST /public/reservations
+ */
+export interface PublicReservationCreateRequest {
+  customerData: PublicReservationCustomerData;
   items: PublicReservationItem[];
   pickupDeadline: string; // ISO date string
   notes?: string;
