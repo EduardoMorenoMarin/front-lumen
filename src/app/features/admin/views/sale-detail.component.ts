@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { Component, DestroyRef, inject } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -9,7 +9,7 @@ import { SaleViewDTO } from '../../../core/models/sale';
 @Component({
   selector: 'app-admin-sale-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, DatePipe, CurrencyPipe],
+  imports: [CommonModule, RouterModule, DatePipe],
   template: `
     <a routerLink="/admin/sales">&larr; Volver</a>
 
@@ -21,19 +21,36 @@ import { SaleViewDTO } from '../../../core/models/sale';
     <article *ngIf="!loading && sale" class="card">
       <header>
         <h2>Venta #{{ sale.id }}</h2>
-        <p>Creada el {{ sale.createdAt | date: 'medium' }} por {{ sale.createdBy }}</p>
+        <p>Estado: {{ sale.status }} · Registrada el {{ sale.saleDate | date: 'medium' }}</p>
       </header>
 
       <dl class="sale-summary">
         <div>
-          <dt>Reserva asociada</dt>
-          <dd>{{ sale.reservationId || 'N/A' }}</dd>
+          <dt>Total</dt>
+          <dd>{{ sale.totalAmount | number: '1.2-2' }}</dd>
         </div>
         <div>
-          <dt>Total</dt>
-          <dd>{{ sale.total | currency: sale.currency }}</dd>
+          <dt>Impuestos</dt>
+          <dd>{{ sale.taxAmount | number: '1.2-2' }}</dd>
+        </div>
+        <div>
+          <dt>Descuento</dt>
+          <dd>{{ sale.discountAmount | number: '1.2-2' }}</dd>
         </div>
       </dl>
+
+      <section class="sale-details">
+        <div>
+          <h3>Cliente</h3>
+          <p>{{ sale.customerFirstName }} {{ sale.customerLastName }}</p>
+          <p>ID: {{ sale.customerId }}</p>
+        </div>
+        <div>
+          <h3>Cajero</h3>
+          <p>{{ sale.cashierEmail }}</p>
+          <p>ID: {{ sale.cashierId }}</p>
+        </div>
+      </section>
 
       <section>
         <h3>Ítems</h3>
@@ -43,15 +60,15 @@ import { SaleViewDTO } from '../../../core/models/sale';
               <th>Producto</th>
               <th>Cantidad</th>
               <th>Precio unitario</th>
-              <th>Subtotal</th>
+              <th>Total</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let item of sale.items">
-              <td>{{ item.productId }}</td>
+              <td>{{ item.productTitle }}</td>
               <td>{{ item.quantity }}</td>
-              <td>{{ item.unitPrice | currency: item.currency }}</td>
-              <td>{{ (item.unitPrice * item.quantity) | currency: item.currency }}</td>
+              <td>{{ item.unitPrice | number: '1.2-2' }}</td>
+              <td>{{ item.totalPrice | number: '1.2-2' }}</td>
             </tr>
           </tbody>
         </table>
