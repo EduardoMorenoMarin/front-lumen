@@ -304,10 +304,15 @@ export class AdminReservationCreateComponent {
   readonly productsError = signal<string | null>(null);
 
   readonly reservationForm = this.fb.nonNullable.group({
-    customerId: this.fb.control('', [
-      Validators.required,
-      Validators.pattern(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/)
-    ]),
+    customerMode: this.fb.nonNullable.control<'existing' | 'new'>('existing'),
+    customerId: this.fb.control('', []),
+    customerData: this.fb.group({
+      firstName: ['', []],
+      lastName: ['', []],
+      dni: ['', []],
+      email: ['', []],
+      phone: ['', []]
+    }),
     notes: ['']
   });
 
@@ -402,18 +407,12 @@ export class AdminReservationCreateComponent {
   }
 
   private buildRequest(): ReservationCreateRequest | null {
-    const { customerId, notes } = this.reservationForm.getRawValue();
-    const trimmedId = customerId?.trim() ?? '';
-    if (!trimmedId) {
-      this.toast.error('Debe seleccionar un cliente válido.');
-      return null;
-    }
 
-    const customer = this.customers().find((item) => item.id === trimmedId);
-    if (!customer) {
-      this.toast.error('Debe seleccionar un cliente válido.');
-      return null;
-    }
+    const { customerMode, customerId, customerData, notes } = this.reservationForm.getRawValue();
+    const payload: ReservationCreateRequest = {
+      items: this.items().map((item) => ({ productId: item.productId, quantity: item.quantity })),
+      notes: notes?.trim() ? notes.trim() : undefined
+    };
 
     const sanitizedPhone = this.sanitizePhone(customer.phone);
     const phone = sanitizedPhone || customer.phone?.trim() || '';
